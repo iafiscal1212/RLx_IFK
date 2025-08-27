@@ -1,0 +1,52 @@
+name: RLx Purity Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  purity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
+      - name: Fail on sensitive files tracked
+        run: |
+          set -e
+          echo "Checking for keys/env/certs accidentally tracked…"
+          disallowed=$(git ls-files | rg -n '\.(pem|key|crt|pfx)$|(^|/)keys/|(^|/)\.env(\..*)?$|secrets.*\.json' || true)
+          if [ -n "$disallowed" ]; then
+            echo "::error::Sensitive files tracked:\n$disallowed"; exit 1; fi
+          echo "OK: no sensitive files tracked."
+
+      - name: Fail on large files (>10MB) tracked
+        run: |
+          set -e
+          large=""
+          while IFS= read -r -d '' f; do
+            size=$(stat -c%s "$f"); if [ "$size" -gt 10000000 ]; then large="$large\n$f ($size bytes)"; fi
+          done < <(git ls-files -z)
+          if [ -n "$large" ]; then echo "::error::Large files tracked:$large"; exit 1; fi
+          echo "OK: no large files."
+
+      - name: Disallow cloud LLM libs in code
+        run: |
+          set -e
+          hits=$(rg -n --hidden --glob '!**/.venv/**' \
+            'import (openai|transformers|anthropic|cohere|vertexai|google\.generativeai)|from (openai|transformers) ' \
+            || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Disallowed cloud libs detected:\n$hits"; exit 1; fi
+          echo "OK: no cloud LLM libs."
+
+      - name: Assert local_bundle not tracked
+        run: |
+          set -e
+          tracked=$(git ls-files | rg -n '^local_bundle/' || true)
+          if [ -n "$tracked" ]; then echo "::error::local_bundle/ must not be tracked:\n$tracked"; exit 1; fi
+          echo "OK: local_bundle not tracked."
