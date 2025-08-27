@@ -1,0 +1,11 @@
+
+**/keys/
+*.pem
+*.key
+*.crt
+*.pfx
+.env
+.env.*
+secrets*.json
+local_bundle/**
+RLX_Interface_Kit_v1.8.1/rlxd.pid
