@@ -1,11 +1,6 @@
-
-**/keys/
-*.pem
-*.key
-*.crt
-*.pfx
+__pycache__/
+*.pyc
 .env
-.env.*
-secrets*.json
-local_bundle/**
-RLX_Interface_Kit_v1.8.1/rlxd.pid
+.lockbox/
+data/*.jsonl
+data/*.model.json

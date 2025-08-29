@@ -1,0 +1,11 @@
+[Unit]
+Description=RLx Service
+After=network.target
+[Service]
+Type=simple
+WorkingDirectory=/opt/rlx
+ExecStart=/opt/rlx/rlxd
+Restart=on-failure
+Environment=RLX_CONFIG=/opt/rlx/rlx_config.yaml
+[Install]
+WantedBy=multi-user.target
