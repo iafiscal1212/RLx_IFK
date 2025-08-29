@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$HOME/RLX_IFK"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRV=rlx
 
 echo "[*] Parando servicio (si está corriendo)…"
