@@ -25,3 +25,17 @@ class MessageRecord(MessageIngest):
     type: str = "message"
     actor: str # This will be the same as author
     affective_proxy: AffectiveProxy | None = None
+
+class AlertDetails(BaseModel):
+    value: float
+    threshold: float
+    rationale: str
+
+class AlertRecord(BaseModel):
+    msg_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ts: datetime = Field(default_factory=datetime.utcnow)
+    actor: str = "RLx"
+    type: str = "alert"
+    alert_type: str = "arousal_spike_detected"
+    trigger_ref: str = Field(description="ID del mensaje que disparó la alerta.")
+    details: AlertDetails

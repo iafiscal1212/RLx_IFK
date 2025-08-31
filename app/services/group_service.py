@@ -11,6 +11,9 @@ from . import analyzer
 MEMORY_DIR = Path("local_bundle/groups")
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 
+# Umbral definido en la política de ética (ethics/policies.yaml)
+AROUSAL_SPIKE_THRESHOLD = 1.5
+
 def get_group_memory_path(group_id: str) -> Path:
     """Construye la ruta al fichero YAML de memoria para un grupo."""
     # Validar group_id para evitar path traversal
@@ -69,6 +72,20 @@ def persist_message(group_id: str, message: schemas.MessageIngest):
     record = schemas.MessageRecord(**message.model_dump(), actor=message.author, affective_proxy=affective_proxy_data)
 
     state.setdefault("log", []).append(record.model_dump(mode='json'))
+
+    # --- 4. Comprobar Políticas Éticas ---
+    # Si el arousal normalizado supera el umbral, se registra una alerta.
+    if record.affective_proxy and record.affective_proxy.arousal_z > AROUSAL_SPIKE_THRESHOLD:
+        alert_details = schemas.AlertDetails(
+            value=round(record.affective_proxy.arousal_z, 4),
+            threshold=AROUSAL_SPIKE_THRESHOLD,
+            rationale="El nivel de excitación (arousal) del mensaje supera el umbral normalizado para este usuario."
+        )
+        alert_record = schemas.AlertRecord(
+            trigger_ref=record.msg_id,
+            details=alert_details
+        )
+        state["log"].append(alert_record.model_dump(mode='json'))
 
     # Guarda el estado actualizado
     with open(filepath, "w", encoding="utf-8") as f:
