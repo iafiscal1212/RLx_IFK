@@ -3,58 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RLx · ZTL Companion</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>RLx - Panel de Control</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>RLx · Compañera (ZTL)</h1>
-            <div class="api-status" id="api-status">
-                <span class="status-light"></span>
-                <span id="status-text">Conectando...</span>
-            </div>
-        </header>
+    <header>
+        <h1>RLx</h1>
+        <div class="status-indicator online" title="Conectado al servicio local"></div>
+    </header>
 
-        <main>
-            <div class="card">
-                <h2>Enviar Mensaje (Grupo)</h2>
-                <form id="send-form">
-                    <input type="text" id="author" value="carmen" required placeholder="Autor">
-                    <textarea id="text" required placeholder="Texto del mensaje">Reunión mañana 9:00. ¿Ok?</textarea>
-                    <input type="text" id="group_id" value="acme-core" required placeholder="Grupo">
-                    <button type="submit">Enviar</button>
-                </form>
-            </div>
+    <main>
+        <div class="sidebar">
+            <h2>Proyectos</h2>
+            <ul id="group-list">
+                <!-- Los grupos se cargarán aquí dinámicamente -->
+                <li class="loading">Cargando proyectos...</li>
+            </ul>
+            <button class="create-group-btn">+ Nuevo Proyecto</button>
+        </div>
 
-            <div class="card">
-                <h2>Ver Entrega (Receptor)</h2>
-                <form id="delivery-form">
-                    <input type="text" id="delivery-msg-id" required placeholder="message_id">
-                    <input type="text" id="recipient" value="luis" required placeholder="receptor">
-                    <button type="submit">Mostrar</button>
-                </form>
+        <div class="content-view">
+            <div id="welcome-message">
+                <h2>Bienvenida, Carmen.</h2>
+                <p>Selecciona un proyecto para ver la conversación o crea uno nuevo.</p>
+                <p>RLx está observando y listo para ayudar.</p>
             </div>
+            <div id="conversation-view" class="hidden">
+                <!-- La conversación del grupo seleccionado se mostrará aquí -->
+            </div>
+        </div>
+    </main>
 
-            <div class="card">
-                <h2>Render On-the-fly</h2>
-                <form id="render-form">
-                    <input type="text" id="render-msg-id" required placeholder="message_id">
-                    <input type="text" id="render-recipient" value="luis" required placeholder="receptor">
-                    <input type="text" id="render-lang" value="en" required placeholder="lang destino">
-                    <button type="submit">Render</button>
-                </form>
-            </div>
-
-            <div class="card result-card">
-                <h2>Resultado</h2>
-                <div class="toggle-container">
-                    <button id="clear-btn">Limpiar</button>
-                </div>
-                <pre id="result-box">El resultado de la API aparecerá aquí...</pre>
-            </div>
-        </main>
-    </div>
-    <script src="app.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>

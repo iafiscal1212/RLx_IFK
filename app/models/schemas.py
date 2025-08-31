@@ -82,3 +82,17 @@ class DailySummaryRecord(BaseModel):
     actor: str = "RLx"
     type: str = "daily_summary"
     details: DailySummaryDetails
+
+# --- Modelos para la lista de grupos ---
+
+class GroupInfo(BaseModel):
+    group_id: str
+    last_modified: datetime
+
+class GroupListResponse(BaseModel):
+    groups: list[GroupInfo]
+
+# --- Modelo para crear un grupo ---
+
+class CreateGroupRequest(BaseModel):
+    group_id: str = Field(..., description="El ID del nuevo grupo a crear. Debe ser alfanumérico con guiones/guiones bajos.")

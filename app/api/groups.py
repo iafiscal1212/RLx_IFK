@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Body, HTTPException, status, Depends, Query
+from pathlib import Path
+from datetime import datetime
+import re
 
 from ..models import schemas
 from ..services import group_service
@@ -8,6 +11,55 @@ router = APIRouter(
     prefix="/groups",
     tags=["groups"],
 )
+
+@router.get("/", response_model=schemas.GroupListResponse)
+def list_groups():
+    """
+    Lista todos los grupos (proyectos) disponibles, ordenados por modificación reciente.
+    """
+    groups_dir = Path("local_bundle/groups")
+    if not groups_dir.exists():
+        return {"groups": []}
+
+    group_files = sorted(
+        groups_dir.glob("*.yaml"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+
+    groups_info = [
+        schemas.GroupInfo(
+            group_id=p.stem,
+            last_modified=datetime.fromtimestamp(p.stat().st_mtime)
+        ) for p in group_files
+    ]
+    return {"groups": groups_info}
+
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.GroupInfo)
+def create_new_group(group_data: schemas.CreateGroupRequest):
+    """
+    Crea un nuevo grupo (proyecto).
+    """
+    group_id = group_data.group_id
+    # Validación estricta del nombre en la capa de API
+    if not re.match(r"^[a-zA-Z0-9_-]+$", group_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El ID del proyecto solo puede contener letras, números, guiones y guiones bajos."
+        )
+
+    try:
+        filepath = group_service.create_group(group_id)
+        return schemas.GroupInfo(
+            group_id=group_id,
+            last_modified=datetime.fromtimestamp(filepath.stat().st_mtime)
+        )
+    except FileExistsError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except ValueError as e: # Captura la validación de get_group_memory_path
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except IOError as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.post("/{group_id}/ingest", status_code=status.HTTP_202_ACCEPTED)
 def ingest_message(group_id: str, message: schemas.MessageIngest):

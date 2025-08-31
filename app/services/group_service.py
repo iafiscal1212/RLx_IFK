@@ -52,6 +52,29 @@ def get_group_memory_path(group_id: str) -> Path:
     validate_group_id(group_id)
     return MEMORY_DIR / f"{group_id}.yaml"
 
+def create_group(group_id: str) -> Path:
+    """
+    Crea un nuevo fichero de memoria para un grupo si no existe.
+    Devuelve la ruta al fichero creado.
+    """
+    filepath = get_group_memory_path(group_id)
+    if filepath.exists():
+        raise FileExistsError(f"El proyecto '{group_id}' ya existe.")
+
+    # Crear el fichero con un estado inicial mínimo
+    initial_state = {
+        "meta": {"group_id": group_id, "created": datetime.utcnow().isoformat()},
+        "log": [],
+        "user_stats": {}
+    }
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            yaml.dump(initial_state, f, default_flow_style=False, allow_unicode=True)
+    except IOError as e:
+        raise IOError(f"No se pudo crear el fichero del proyecto: {e}") from e
+
+    return filepath
+
 def persist_message(group_id: str, message: schemas.MessageIngest):
     """
     Añade un mensaje al log de un grupo en su fichero YAML.
