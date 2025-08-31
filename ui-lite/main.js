@@ -744,13 +744,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function checkHealth() {
         try {
             const response = await fetch(`${API_BASE_URL}/health`);
-            }
-        });
-    }
-
-    async function checkHealth() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/health`);
             statusIndicator.classList.toggle('online', response.ok);
             statusIndicator.classList.toggle('offline', !response.ok);
         } catch (error) {
@@ -838,7 +831,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Carga inicial
     fetchGroups();
-    loadLangPreference();
     loadLangPreference();
     checkHealth();
     setInterval(checkHealth, 15000); // Comprobar cada 15 segundos
