@@ -15,7 +15,11 @@ API_PATTERNS = [
     r"GROQ_API_KEY", r"MISTRAL_API_KEY", r"\bAPI_KEY\b", r"SECRET_KEY",
     r"BEARER\s+[A-Za-z0-9\-\._~\+\/]+"
 ]
-CMD_PATTERNS = [r"\bcurl\s", r"\bwget\s", r"\biwr\s", r"\binvoke-webrequest\b", r"\bnc\s", r"\bncat\s"]
+CMD_PATTERNS = [
+    r"\bcurl\s", r"\bwget\s", r"\biwr\s",
+    r"\binvoke-webrequest\b", r"\bnc\s", r"\bncat\s"
+]
+
 def read_text(p: str) -> str:
     try:
         return open(p, "r", encoding="utf-8", errors="ignore").read()
@@ -42,7 +46,9 @@ def main():
                 if re.search(pat, txt, flags=re.IGNORECASE):
                     findings["cmd_suspects"].append({"file": p, "pattern": pat})
                     break
-    json.dump(findings, open(args.out, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(findings, f, indent=2, ensure_ascii=False)
+
     fail = bool(findings["api_markers"] or findings["cmd_suspects"])
     if fail:
         print("[WARN] Secrets guard: posibles claves/comandos detectados")

@@ -4,6 +4,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const conversationView = document.getElementById('conversation-view');
     const createGroupBtn = document.querySelector('.create-group-btn');
     const langSelector = document.getElementById('lang-selector');
+    // Elementos del modal de renombrar
+    const renameModal = document.getElementById('rename-modal');
+    const renameForm = document.getElementById('rename-form');
+    const newGroupIdInput = document.getElementById('new-group-id-input');
+    const cancelRenameBtn = document.getElementById('cancel-rename-btn');
+    // Elementos del modal de eliminar
+    const deleteModal = document.getElementById('delete-modal');
+    const deleteModalText = document.getElementById('delete-modal-text');
+    const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+    // Elementos del modal de crear
+    const createModal = document.getElementById('create-modal');
+    const createForm = document.getElementById('create-form');
+    const createGroupIdInput = document.getElementById('create-group-id-input');
+    const cancelCreateBtn = document.getElementById('cancel-create-btn');
 
     const API_BASE_URL = '/api/v1';
 
@@ -13,14 +28,30 @@ document.addEventListener('DOMContentLoaded', () => {
             'newProjectBtn': '+ Nuevo Proyecto',
             'welcomeHeader': 'Bienvenida, Carmen.',
             'welcomeSubtext': 'Selecciona un proyecto para ver la conversación o crea uno nuevo.',
-            'welcomeHelptext': 'RLx está observando y listo para ayudar.'
+            'welcomeHelptext': 'RLx está observando y listo para ayudar.',
+            'renameModalTitle': 'Renombrar Proyecto',
+            'cancelBtn': 'Cancelar',
+            'confirmBtn': 'Confirmar',
+            'deleteModalTitle': 'Eliminar Proyecto',
+            'deleteModalText': '¿Estás seguro de que quieres eliminar el proyecto "{groupId}"? Esta acción no se puede deshacer.',
+            'deleteBtn': 'Eliminar',
+            'createModalTitle': 'Crear Nuevo Proyecto',
+            'createBtn': 'Crear'
         },
         'en': {
             'projectsTitle': 'Projects',
             'newProjectBtn': '+ New Project',
             'welcomeHeader': 'Welcome, Carmen.',
             'welcomeSubtext': 'Select a project to see the conversation or create a new one.',
-            'welcomeHelptext': 'RLx is observing and ready to help.'
+            'welcomeHelptext': 'RLx is observing and ready to help.',
+            'renameModalTitle': 'Rename Project',
+            'cancelBtn': 'Cancel',
+            'confirmBtn': 'Confirm',
+            'deleteModalTitle': 'Delete Project',
+            'deleteModalText': 'Are you sure you want to delete the project "{groupId}"? This action cannot be undone.',
+            'deleteBtn': 'Delete',
+            'createModalTitle': 'Create New Project',
+            'createBtn': 'Create'
         }
     };
 
@@ -96,14 +127,19 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Cargando conversación para ${groupId}...`);
     }
 
-    async function createGroup() {
-        const groupId = prompt("Introduce el nombre del nuevo proyecto (letras, números, guiones y guiones bajos):");
+    function createGroup() {
+        // Muestra el modal de creación
+        createGroupIdInput.value = '';
+        createModal.classList.remove('hidden');
+        createGroupIdInput.focus();
+    }
 
-        if (!groupId) {
-            return; // El usuario canceló
-        }
+    async function handleCreateSubmit(event) {
+        event.preventDefault();
+        const groupId = createGroupIdInput.value.trim();
 
-        // Validación básica en el cliente
+        if (!groupId) return;
+
         if (!/^[a-zA-Z0-9_-]+$/.test(groupId)) {
             alert("Nombre de proyecto no válido. Usa solo letras, números, guiones y guiones bajos.");
             return;
@@ -115,26 +151,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ group_id: groupId }),
             });
-
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.detail || `Error: ${response.statusText}`);
             }
-
-            // Éxito: refrescar la lista para mostrar el nuevo proyecto
             await fetchGroups();
-
         } catch (error) {
             console.error('Error al crear el proyecto:', error);
             alert(`No se pudo crear el proyecto: ${error.message}`);
+        } finally {
+            closeCreateModal();
         }
     }
 
-    async function renameGroup(oldGroupId) {
-        const newGroupId = prompt(`Introduce el nuevo nombre para el proyecto "${oldGroupId}":`, oldGroupId);
+    function renameGroup(oldGroupId) {
+        // Muestra el modal en lugar de un prompt
+        newGroupIdInput.value = oldGroupId;
+        renameModal.dataset.oldGroupId = oldGroupId; // Guarda el ID antiguo en el modal
+        renameModal.classList.remove('hidden');
+        newGroupIdInput.focus();
+        newGroupIdInput.select();
+    }
+
+    async function handleRenameSubmit(event) {
+        event.preventDefault();
+        const oldGroupId = renameModal.dataset.oldGroupId;
+        const newGroupId = newGroupIdInput.value.trim();
 
         if (!newGroupId || newGroupId === oldGroupId) {
-            return; // El usuario canceló o no cambió el nombre
+            closeRenameModal();
+            return;
         }
 
         if (!/^[a-zA-Z0-9_-]+$/.test(newGroupId)) {
@@ -148,45 +194,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ new_group_id: newGroupId }),
             });
-
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || `Error: ${response.statusText}`);
             }
-
-            // Éxito: refrescar la lista para mostrar el proyecto renombrado
             await fetchGroups();
-            // Opcional: seleccionar automáticamente el proyecto renombrado
-
         } catch (error) {
             console.error(`Error al renombrar el proyecto ${oldGroupId}:`, error);
             alert(`No se pudo renombrar el proyecto: ${error.message}`);
+        } finally {
+            closeRenameModal();
         }
     }
 
-    async function deleteGroup(groupId) {
-        const confirmation = confirm(`¿Estás seguro de que quieres eliminar el proyecto "${groupId}"? Esta acción no se puede deshacer.`);
-        if (!confirmation) {
-            return;
-        }
+    function deleteGroup(groupId) {
+        // Muestra el modal de confirmación
+        const lang = langSelector.value;
+        const text = I18N[lang].deleteModalText.replace('{groupId}', groupId);
+        deleteModalText.textContent = text;
+        deleteModal.dataset.groupId = groupId;
+        deleteModal.classList.remove('hidden');
+    }
+
+    async function handleConfirmDelete() {
+        const groupId = deleteModal.dataset.groupId;
+        if (!groupId) return;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/groups/${groupId}`, {
-                method: 'DELETE',
-            });
-
+            const response = await fetch(`${API_BASE_URL}/groups/${groupId}`, { method: 'DELETE' });
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.detail || `Error: ${response.statusText}`);
             }
-
-            // Éxito: refrescar la lista para eliminar el proyecto de la vista
             await fetchGroups();
-
+            // Si el proyecto eliminado era el activo, volver a la pantalla de bienvenida
+            const activeItem = document.querySelector('#group-list li.active');
+            if (activeItem && activeItem.dataset.groupId === groupId) {
+                welcomeMessage.classList.remove('hidden');
+                conversationView.classList.add('hidden');
+            }
         } catch (error) {
             console.error(`Error al eliminar el proyecto ${groupId}:`, error);
             alert(`No se pudo eliminar el proyecto: ${error.message}`);
+        } finally {
+            closeDeleteModal();
         }
+    }
+
+    function closeDeleteModal() {
+        deleteModal.classList.add('hidden');
+        delete deleteModal.dataset.groupId;
+    }
+
+    function closeCreateModal() {
+        createModal.classList.add('hidden');
+    }
+
+    function closeRenameModal() {
+        renameModal.classList.add('hidden');
+        delete renameModal.dataset.oldGroupId;
     }
 
     function updateUIText(lang) {
@@ -217,6 +283,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     createGroupBtn.addEventListener('click', createGroup);
     langSelector.addEventListener('change', handleLangChange);
+
+    // Eventos del modal de renombrar
+    renameForm.addEventListener('submit', handleRenameSubmit);
+    cancelRenameBtn.addEventListener('click', closeRenameModal);
+    renameModal.addEventListener('click', (e) => {
+        if (e.target === renameModal) closeRenameModal();
+    });
+
+    // Eventos del modal de eliminar
+    confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
+    cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+    deleteModal.addEventListener('click', (e) => {
+        if (e.target === deleteModal) closeDeleteModal();
+    });
+
+    // Eventos del modal de crear
+    createForm.addEventListener('submit', handleCreateSubmit);
+    cancelCreateBtn.addEventListener('click', closeCreateModal);
+    createModal.addEventListener('click', (e) => {
+        if (e.target === createModal) closeCreateModal();
+    });
+
     // Carga inicial
     fetchGroups();
     loadLangPreference();
