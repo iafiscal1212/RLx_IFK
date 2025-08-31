@@ -3,3 +3,4 @@ uvicorn
 pyyaml
 regex
 psutil
+pydantic-settings
