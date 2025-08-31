@@ -29,17 +29,24 @@ PROFILES_DIR = Path("profiles")
 PROFILES_DIR.mkdir(exist_ok=True)
 
 @lru_cache(maxsize=16)
-def _load_group_settings(group_id: str) -> dict:
-    """Carga la configuración específica de un grupo desde profiles/groups.yaml."""
+
+def _load_group_profile(group_id: str) -> dict:
+    """Carga el perfil completo de un grupo desde profiles/groups.yaml."""
     profiles_path = PROFILES_DIR / "groups.yaml"
     if not profiles_path.exists():
         return {}
     try:
         with open(profiles_path, "r", encoding="utf-8") as f:
             all_groups = yaml.safe_load(f) or {}
-        return all_groups.get(group_id, {}).get("companion_settings", {})
+        return all_groups.get(group_id, {})
     except (IOError, yaml.YAMLError):
         return {}
+
+@lru_cache(maxsize=16)
+def _load_group_settings(group_id: str) -> dict:
+    """Carga la sección 'companion_settings' de un grupo."""
+    profile = _load_group_profile(group_id)
+    return profile.get("companion_settings", {})
 
 def get_group_memory_path(group_id: str) -> Path:
     """Construye la ruta al fichero YAML de memoria para un grupo."""

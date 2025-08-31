@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from app.models import schemas
 from app.services import summarizer
-from app.services.group_service import get_group_memory_path, _load_group_settings
+from app.services.group_service import get_group_memory_path, _load_group_profile, _load_group_settings
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -76,6 +76,9 @@ def process_group(group_id: str):
             if not should_run_summary(group_id, state):
                 return
 
+            profile = _load_group_profile(group_id)
+            user_names = profile.get("users", [])
+
             logging.info(f"[{group_id}] Generando resumen diario...")
 
             # Filtrar logs de las últimas 24 horas
@@ -89,7 +92,7 @@ def process_group(group_id: str):
                 logging.info(f"[{group_id}] No hay logs recientes para resumir. Saltando.")
                 return
 
-            summary_details_data = summarizer.generate_daily_summary(recent_logs)
+            summary_details_data = summarizer.generate_daily_summary(recent_logs, user_names=user_names)
             summary_details = schemas.DailySummaryDetails(**summary_details_data)
             summary_record = schemas.DailySummaryRecord(details=summary_details)
 

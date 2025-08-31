@@ -65,9 +65,14 @@ class SuggestionRecord(BaseModel):
 
 # --- Modelos para el Resumen Diario ---
 
+class ActionItem(BaseModel):
+    assignee: str = Field(description="Persona a la que se le asignó la acción.")
+    task: str = Field(description="Descripción de la tarea o acción.")
+
 class DailySummaryDetails(BaseModel):
     topics: list[str] = Field(description="Temas más discutidos extraídos del día.")
     decisions: list[str] = Field(description="Decisiones o acuerdos clave identificados.")
+    actions: list[ActionItem] = Field(description="Acciones o tareas asignadas a miembros del equipo.")
     message_count: int = Field(description="Número de mensajes analizados para este resumen.")
 
 class DailySummaryRecord(BaseModel):
