@@ -32,6 +32,16 @@ document.addEventListener('DOMContentLoaded', () => {
             li.textContent = group.group_id;
             li.dataset.groupId = group.group_id;
             li.title = `Última actividad: ${new Date(group.last_modified).toLocaleString()}`;
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '&times;'; // 'x' symbol
+            deleteBtn.title = `Eliminar proyecto ${group.group_id}`;
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Evitar que se dispare el click del 'li'
+                deleteGroup(group.group_id);
+            });
+
             li.addEventListener('click', () => {
                 // Marcar como activo
                 document.querySelectorAll('#group-list li').forEach(item => item.classList.remove('active'));
@@ -40,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Cargar la conversación (lógica futura)
                 loadConversation(group.group_id);
             });
+            li.appendChild(deleteBtn);
             groupList.appendChild(li);
         });
     }
@@ -83,6 +94,31 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error al crear el proyecto:', error);
             alert(`No se pudo crear el proyecto: ${error.message}`);
+        }
+    }
+
+    async function deleteGroup(groupId) {
+        const confirmation = confirm(`¿Estás seguro de que quieres eliminar el proyecto "${groupId}"? Esta acción no se puede deshacer.`);
+        if (!confirmation) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/groups/${groupId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `Error: ${response.statusText}`);
+            }
+
+            // Éxito: refrescar la lista para eliminar el proyecto de la vista
+            await fetchGroups();
+
+        } catch (error) {
+            console.error(`Error al eliminar el proyecto ${groupId}:`, error);
+            alert(`No se pudo eliminar el proyecto: ${error.message}`);
         }
     }
 

@@ -75,6 +75,23 @@ def create_group(group_id: str) -> Path:
 
     return filepath
 
+def delete_group(group_id: str):
+    """
+    Elimina de forma segura el fichero de memoria de un grupo y su fichero de bloqueo.
+    """
+    filepath = get_group_memory_path(group_id)
+    lock_path = filepath.with_suffix(".yaml.lock")
+
+    if not filepath.exists():
+        raise FileNotFoundError(f"El proyecto '{group_id}' no existe.")
+
+    try:
+        filepath.unlink()
+        if lock_path.exists():
+            lock_path.unlink()
+    except IOError as e:
+        raise IOError(f"No se pudo eliminar el fichero del proyecto: {e}") from e
+
 def persist_message(group_id: str, message: schemas.MessageIngest):
     """
     Añade un mensaje al log de un grupo en su fichero YAML.
@@ -115,7 +132,7 @@ def persist_message(group_id: str, message: schemas.MessageIngest):
             z_scores = {}
             for key in ["arousal", "valence", "uncertainty"]:
                 # Usar .get() para evitar fallos si el analizador aún no provee todas las señales
-                raw_val = raw_signals.get(f"raw_{key}", 0.0)
+                raw_val = raw_signals.get(f"raw_{key}", 0.0) # <-- Cambio clave
                 # Actualizar media
                 stats[f"ewma_{key}"] = alpha * raw_val + (1 - alpha) * stats[f"ewma_{key}"]
                 # Actualizar varianza (usando la media de los cuadrados)

@@ -61,6 +61,21 @@ def create_new_group(group_data: schemas.CreateGroupRequest):
     except IOError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_group(group_id: str):
+    """
+    Elimina un grupo (proyecto) de forma permanente.
+    """
+    try:
+        group_service.delete_group(group_id)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except IOError as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    except ValueError as e: # Captura la validación de get_group_memory_path
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.post("/{group_id}/ingest", status_code=status.HTTP_202_ACCEPTED)
 def ingest_message(group_id: str, message: schemas.MessageIngest):
     """Ingiere y procesa un nuevo mensaje para un grupo."""
