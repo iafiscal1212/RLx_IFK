@@ -9,24 +9,32 @@
 <body>
     <header>
         <h1>RLx</h1>
-        <div class="status-indicator online" title="Conectado al servicio local"></div>
+        <div class="header-right">
+            <div class="lang-selector-wrapper">
+                <select id="lang-selector" title="Seleccionar idioma de la interfaz">
+                    <option value="es">ES</option>
+                    <option value="en">EN</option>
+                </select>
+            </div>
+            <div class="status-indicator online" title="Conectado al servicio local"></div>
+        </div>
     </header>
 
     <main>
         <div class="sidebar">
-            <h2>Proyectos</h2>
+            <h2 data-i18n-key="projectsTitle">Proyectos</h2>
             <ul id="group-list">
                 <!-- Los grupos se cargarán aquí dinámicamente -->
                 <li class="loading">Cargando proyectos...</li>
             </ul>
-            <button class="create-group-btn">+ Nuevo Proyecto</button>
+            <button class="create-group-btn" data-i18n-key="newProjectBtn">+ Nuevo Proyecto</button>
         </div>
 
         <div class="content-view">
             <div id="welcome-message">
-                <h2>Bienvenida, Carmen.</h2>
-                <p>Selecciona un proyecto para ver la conversación o crea uno nuevo.</p>
-                <p>RLx está observando y listo para ayudar.</p>
+                <h2 data-i18n-key="welcomeHeader">Bienvenida, Carmen.</h2>
+                <p data-i18n-key="welcomeSubtext">Selecciona un proyecto para ver la conversación o crea uno nuevo.</p>
+                <p data-i18n-key="welcomeHelptext">RLx está observando y listo para ayudar.</p>
             </div>
             <div id="conversation-view" class="hidden">
                 <!-- La conversación del grupo seleccionado se mostrará aquí -->

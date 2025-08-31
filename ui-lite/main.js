@@ -3,8 +3,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const welcomeMessage = document.getElementById('welcome-message');
     const conversationView = document.getElementById('conversation-view');
     const createGroupBtn = document.querySelector('.create-group-btn');
+    const langSelector = document.getElementById('lang-selector');
 
     const API_BASE_URL = '/api/v1';
+
+    const I18N = {
+        'es': {
+            'projectsTitle': 'Proyectos',
+            'newProjectBtn': '+ Nuevo Proyecto',
+            'welcomeHeader': 'Bienvenida, Carmen.',
+            'welcomeSubtext': 'Selecciona un proyecto para ver la conversación o crea uno nuevo.',
+            'welcomeHelptext': 'RLx está observando y listo para ayudar.'
+        },
+        'en': {
+            'projectsTitle': 'Projects',
+            'newProjectBtn': '+ New Project',
+            'welcomeHeader': 'Welcome, Carmen.',
+            'welcomeSubtext': 'Select a project to see the conversation or create a new one.',
+            'welcomeHelptext': 'RLx is observing and ready to help.'
+        }
+    };
 
     async function fetchGroups() {
         try {
@@ -63,8 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Cargar la conversación (lógica futura)
                 loadConversation(group.group_id);
             });
-            li.appendChild(groupNameSpan);
-            li.appendChild(renameBtn);
+            li.appendChild(groupNameSpan); // Contenedor para el nombre
+            li.appendChild(renameBtn); // Botón de renombrar
             li.appendChild(deleteBtn);
             groupList.appendChild(li);
         });
@@ -171,7 +189,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateUIText(lang) {
+        const elements = document.querySelectorAll('[data-i18n-key]');
+        elements.forEach(el => {
+            const key = el.dataset.i18nKey;
+            if (I18N[lang] && I18N[lang][key]) {
+                el.textContent = I18N[lang][key];
+            }
+        });
+    }
+
+    function handleLangChange() {
+        const selectedLang = langSelector.value;
+        // Guardar la preferencia del usuario en el almacenamiento local del navegador.
+        localStorage.setItem('rlx-ui-lang', selectedLang);
+        updateUIText(selectedLang);
+        console.log(`Idioma de la interfaz cambiado a: ${selectedLang}`);
+    }
+
+    function loadLangPreference() {
+        const savedLang = localStorage.getItem('rlx-ui-lang') || 'es';
+        if (savedLang && ['es', 'en'].includes(savedLang)) {
+            langSelector.value = savedLang;
+        }
+        updateUIText(savedLang);
+    }
+
     createGroupBtn.addEventListener('click', createGroup);
+    langSelector.addEventListener('change', handleLangChange);
     // Carga inicial
     fetchGroups();
+    loadLangPreference();
 });

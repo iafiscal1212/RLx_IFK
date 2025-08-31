@@ -27,6 +27,27 @@ header h1 {
     color: #a0aec0;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+#lang-selector {
+    background-color: #4a5568;
+    color: #e2e8f0;
+    border: 1px solid #718096;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+#lang-selector:focus {
+    outline: 2px solid #4299e1;
+    outline-offset: 2px;
+}
+
 .status-indicator {
     width: 12px;
     height: 12px;
