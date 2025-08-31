@@ -8,3 +8,4 @@ data/*.model.json
 # Excluir datos brutos y corpus generados
 /data/raw/
 /data/rlx_corpus/
+/.cache/
