@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 import sys, os, re, json, argparse, pathlib
+
+# Añadir el directorio raíz del proyecto a la ruta de Python para permitir importaciones
+project_root = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
+
 from scripts.utils import read_file_content
 
 BANNED = [

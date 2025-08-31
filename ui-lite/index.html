@@ -9,30 +9,120 @@
 <body>
     <header>
         <h1>RLx</h1>
-        <div class="status-indicator online" title="Conectado al servicio local"></div>
+        <div class="header-right">
+            <div class="theme-switch-wrapper">
+                <label class="theme-switch" for="theme-switch-checkbox" title="Cambiar tema">
+                    <input type="checkbox" id="theme-switch-checkbox" />
+                    <div class="slider round"></div>
+                </label>
+            </div>
+            <div class="lang-selector-wrapper">
+                <select id="lang-selector" title="Seleccionar idioma de la interfaz">
+                    <option value="es">ES</option>
+                    <option value="en">EN</option>
+                </select>
+            </div>
+            <div class="status-indicator online" title="Conectado al servicio local"></div>
+        </div>
     </header>
 
     <main>
         <div class="sidebar">
-            <h2>Proyectos</h2>
+            <h2 data-i18n-key="projectsTitle">Proyectos</h2>
+            <div class="search-wrapper">
+                <input type="search" id="group-search-input" data-i18n-placeholder="searchProjectPlaceholder" autocomplete="off">
+            </div>
             <ul id="group-list">
                 <!-- Los grupos se cargarán aquí dinámicamente -->
                 <li class="loading">Cargando proyectos...</li>
             </ul>
-            <button class="create-group-btn">+ Nuevo Proyecto</button>
+            <button class="create-group-btn" data-i18n-key="newProjectBtn">+ Nuevo Proyecto</button>
         </div>
 
         <div class="content-view">
             <div id="welcome-message">
-                <h2>Bienvenida, Carmen.</h2>
-                <p>Selecciona un proyecto para ver la conversación o crea uno nuevo.</p>
-                <p>RLx está observando y listo para ayudar.</p>
+                <h2 data-i18n-key="welcomeHeader">Bienvenida, Carmen.</h2>
+                <p data-i18n-key="welcomeSubtext">Selecciona un proyecto para ver la conversación o crea uno nuevo.</p>
+                <p data-i18n-key="welcomeHelptext">RLx está observando y listo para ayudar.</p>
             </div>
             <div id="conversation-view" class="hidden">
-                <!-- La conversación del grupo seleccionado se mostrará aquí -->
+                <div id="metrics-panel">
+                    <div class="metric-item" data-i18n-title="metricFrictionTitle">
+                        <span class="metric-label" data-i18n-key="metricFrictionLabel">Fricción</span>
+                        <span class="metric-value" id="metric-friction">0.00</span>
+                    </div>
+                    <div class="metric-item" data-i18n-title="metricArousalTitle">
+                        <span class="metric-label" data-i18n-key="metricArousalLabel">Energía</span>
+                        <span class="metric-value" id="metric-arousal">0.00</span>
+                    </div>
+                    <div class="metric-item" data-i18n-title="metricValenceTitle">
+                        <span class="metric-label" data-i18n-key="metricValenceLabel">Tono</span>
+                        <span class="metric-value" id="metric-valence">0.00</span>
+                    </div>
+                </div>
+                <div id="log-container">
+                    <!-- Los items del log se renderizarán aquí -->
+                </div>
+                <form id="message-form">
+                    <input type="text" id="message-input" data-i18n-placeholder="messagePlaceholder" autocomplete="off" required>
+                    <button type="submit" data-i18n-key="sendBtn">Enviar</button>
+                </form>
             </div>
         </div>
     </main>
+
+    <!-- Modal para renombrar proyecto -->
+    <div id="rename-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 data-i18n-key="renameModalTitle">Renombrar Proyecto</h3>
+            <form id="rename-form">
+                <input type="text" id="new-group-id-input" required autocomplete="off">
+                <div class="modal-actions">
+                    <button type="button" id="cancel-rename-btn" data-i18n-key="cancelBtn">Cancelar</button>
+                    <button type="submit" id="confirm-rename-btn" data-i18n-key="confirmBtn">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para eliminar proyecto -->
+    <div id="delete-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 data-i18n-key="deleteModalTitle">Eliminar Proyecto</h3>
+            <p id="delete-modal-text"></p>
+            <div class="modal-actions">
+                <button type="button" id="cancel-delete-btn" data-i18n-key="cancelBtn">Cancelar</button>
+                <button type="button" id="confirm-delete-btn" data-i18n-key="deleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear proyecto -->
+    <div id="create-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 data-i18n-key="createModalTitle">Nuevo Proyecto</h3>
+            <form id="create-form">
+                <input type="text" id="create-group-id-input" required autocomplete="off" placeholder="nombre-del-proyecto">
+                <div class="form-group">
+                    <label for="create-group-template-select" data-i18n-key="templateLabel">Plantilla:</label>
+                    <select id="create-group-template-select">
+                        <option value="" data-i18n-key="templateNone">Ninguna (vacío)</option>
+                        <option value="scientific" data-i18n-key="templateScientific">Científico</option>
+                        <option value="business" data-i18n-key="templateBusiness">Empresarial</option>
+                        <option value="creative" data-i18n-key="templateCreative">Creativo</option>
+                        <option value="strategic" data-i18n-key="templateStrategic">Estratégico</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancel-create-btn" data-i18n-key="cancelBtn">Cancelar</button>
+                    <button type="submit" id="confirm-create-btn" data-i18n-key="createBtn">Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Contenedor para notificaciones (toasts) -->
+    <div id="toast-container"></div>
 
     <script src="main.js"></script>
 </body>

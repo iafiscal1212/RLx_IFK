@@ -54,7 +54,29 @@ def _simple_stem_en(word: str) -> str:
         return word[:-1]
     return word
 
-STEMMERS = {"es": _simple_stem_es, "en": _simple_stem_en}
+def _simple_stem_fr(word: str) -> str:
+    """Un stemmer muy básico para francés, ZTL-compliant."""
+    if len(word) > 4 and word.endswith("ions"):
+        return word[:-4]
+    if len(word) > 3 and (word.endswith("er") or word.endswith("ir")):
+        return word[:-2]
+    if len(word) > 2 and word.endswith("es"):
+        return word[:-2]
+    if len(word) > 1 and word.endswith(('e', 's')) and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+def _simple_stem_it(word: str) -> str:
+    """Un stemmer muy básico para italiano, ZTL-compliant."""
+    if len(word) > 4 and word.endswith(('ando', 'endo')):
+        return word[:-4]
+    if len(word) > 3 and (word.endswith('are') or word.endswith('ere') or word.endswith('ire')):
+        return word[:-3]
+    if len(word) > 2 and word.endswith(('i', 'e', 'a')):
+        return word[:-1]
+    return word
+
+STEMMERS = {"es": _simple_stem_es, "en": _simple_stem_en, "fr": _simple_stem_fr, "it": _simple_stem_it}
 
 def _multilang_stem(word: str, lang: str) -> str:
     return STEMMERS.get(lang, lambda w: w)(word)
@@ -96,19 +118,17 @@ def _extract_decisions(records: list[dict], lang: str) -> list[str]:
     rules = _load_summarizer_rules()
     keywords_for_lang = rules.get("decision_keywords", {}).get(lang, [])
 
+    if not keywords_for_lang:
+        return []
+
+    keyword_re = re.compile(r'\b(' + '|'.join(keywords_for_lang) + r')\b', re.IGNORECASE)
+
     for record in records:
-        text = record.get("text", "").lower()
-        for keyword in keywords_for_lang:
-            if keyword in text:
-                # Extrae la línea o frase que contiene la palabra clave
-                for line in record.get("text", "").split('\n'):
-                    if keyword in line.lower():
-                        decision_text = line.strip()
-                        # Limpiar la palabra clave para una mejor legibilidad
-                        clean_decision = re.sub(f'(?i){keyword}', '', decision_text, 1).strip()
-                        if clean_decision:
-                            decisions.append(clean_decision)
-                break # Pasar al siguiente mensaje una vez encontrada una decisión
+        for line in record.get("text", "").split('\n'):
+            if keyword_re.search(line):
+                # Limpiar la línea para que sea más legible como una decisión.
+                clean_decision = line.strip().lstrip('*- ').capitalize()
+                decisions.append(clean_decision)
     return decisions
 
 def _extract_actions(records: list[dict], lang: str, user_names: list[str]) -> list[dict]:
@@ -136,13 +156,12 @@ def _extract_actions(records: list[dict], lang: str, user_names: list[str]) -> l
                 if match:
                     assignee = match.group('assignee').strip()
                     task = match.group('task').strip()
-                    # Verificación final para asegurar que el asignado es un usuario válido
+                    # Verificación final para asegurar que el asignado es un usuario válido (case-insensitive)
                     if assignee.lower() in [name.lower() for name in user_names]:
                          actions.append({"assignee": assignee, "task": task})
-                         break  # Ir a la siguiente línea
-            else:
-                continue
-            break # Ir al siguiente mensaje si se encontró una acción en la línea
+                         break # Ir a la siguiente línea, ya que hemos encontrado una acción
+            # Si el bucle de patrones terminó (encontramos una acción y usamos break), no continuamos.
+            # Si no, el `else` no se ejecuta y pasamos a la siguiente línea.
     return actions
 
 def _calculate_general_sentiment(log_records: list[dict]) -> float | None:
@@ -158,14 +177,28 @@ def _calculate_general_sentiment(log_records: list[dict]) -> float | None:
 
     return statistics.mean(valence_scores)
 
+def _get_active_members(messages: list[dict], top_n: int = 5) -> list[str]:
+    """Obtiene los miembros más activos por número de mensajes."""
+    if not messages:
+        return []
+
+    author_counts = Counter(msg.get("author") for msg in messages if msg.get("author"))
+    return [author for author, count in author_counts.most_common(top_n)]
+
 def generate_daily_summary(log_records: list[dict], lang: str = "es", user_names: list[str] | None = None) -> dict:
     """Genera un resumen diario a partir de los registros de log."""
     messages = [r for r in log_records if r.get("type") == "message"]
     message_texts = [msg.get("text", "") for msg in messages]
+    user_names = user_names or []
 
     topics = _extract_topics(message_texts, lang=lang)
     decisions = _extract_decisions(messages, lang=lang)
-    actions = _extract_actions(messages, lang=lang, user_names=user_names or [])
+    actions = _extract_actions(messages, lang=lang, user_names=user_names)
     sentiment = _calculate_general_sentiment(messages)
+    active_members = _get_active_members(messages)
 
-    return {"topics": topics, "decisions": decisions, "actions": actions, "general_sentiment": sentiment, "message_count": len(messages)}
+    return {
+        "topics": topics, "decisions": decisions, "actions": actions,
+        "general_sentiment": sentiment, "message_count": len(messages),
+        "active_members": active_members
+    }

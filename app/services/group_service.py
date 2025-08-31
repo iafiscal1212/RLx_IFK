@@ -21,12 +21,17 @@ DEFAULT_PAUSE_DURATION_MIN = 5     # Duración por defecto de la pausa sugerida
 
 # Directorio donde se guardará la memoria persistente.
 # Debe estar fuera del código fuente, como se especifica en la arquitectura.
-MEMORY_DIR = Path("local_bundle/groups")
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+MEMORY_DIR = ROOT_DIR / "local_bundle/groups"
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 
 # Directorio de perfiles
-PROFILES_DIR = Path("profiles")
+PROFILES_DIR = ROOT_DIR / "profiles"
 PROFILES_DIR.mkdir(exist_ok=True)
+
+# Directorio de plantillas
+TEMPLATES_DIR = ROOT_DIR / "templates"
+TEMPLATES_DIR.mkdir(exist_ok=True)
 
 @lru_cache(maxsize=16)
 def _load_group_profile(group_id: str) -> dict:
@@ -52,21 +57,37 @@ def get_group_memory_path(group_id: str) -> Path:
     validate_group_id(group_id)
     return MEMORY_DIR / f"{group_id}.yaml"
 
-def create_group(group_id: str) -> Path:
+def create_group(group_id: str, template: str | None = None) -> Path:
     """
     Crea un nuevo fichero de memoria para un grupo si no existe.
+    Aplica una plantilla si se especifica.
     Devuelve la ruta al fichero creado.
     """
     filepath = get_group_memory_path(group_id)
     if filepath.exists():
         raise FileExistsError(f"El proyecto '{group_id}' ya existe.")
 
-    # Crear el fichero con un estado inicial mínimo
-    initial_state = {
-        "meta": {"group_id": group_id, "created": datetime.utcnow().isoformat()},
-        "log": [],
-        "user_stats": {}
-    }
+    # Cargar estado inicial desde una plantilla si se proporciona
+    if template:
+        templates_file = TEMPLATES_DIR / "group_templates.yaml"
+        try:
+            if templates_file.exists():
+                with open(templates_file, "r", encoding="utf-8") as f:
+                    all_templates = yaml.safe_load(f) or {}
+                initial_state = all_templates.get(template, {}).copy() # Usar una copia
+            else:
+                initial_state = {}
+        except (IOError, yaml.YAMLError):
+            initial_state = {}
+    else:
+        initial_state = {}
+
+    # Asegurar que la estructura base está presente y los metadatos son correctos
+    initial_state.setdefault("meta", {})["group_id"] = group_id
+    initial_state.setdefault("meta", {})["created"] = datetime.utcnow().isoformat()
+    initial_state.setdefault("log", [])
+    initial_state.setdefault("user_stats", {})
+
     try:
         with open(filepath, "w", encoding="utf-8") as f:
             yaml.dump(initial_state, f, default_flow_style=False, allow_unicode=True)
@@ -74,6 +95,56 @@ def create_group(group_id: str) -> Path:
         raise IOError(f"No se pudo crear el fichero del proyecto: {e}") from e
 
     return filepath
+
+def delete_group(group_id: str):
+    """
+    Elimina de forma segura el fichero de memoria de un grupo y su fichero de bloqueo.
+    """
+    filepath = get_group_memory_path(group_id)
+    lock_path = filepath.with_suffix(".yaml.lock")
+
+    if not filepath.exists():
+        raise FileNotFoundError(f"El proyecto '{group_id}' no existe.")
+
+    try:
+        filepath.unlink()
+        if lock_path.exists():
+            lock_path.unlink()
+    except IOError as e:
+        raise IOError(f"No se pudo eliminar el fichero del proyecto: {e}") from e
+
+def rename_group(old_group_id: str, new_group_id: str):
+    """
+    Renombra un proyecto de forma segura, moviendo el fichero de memoria
+    y actualizando su contenido interno.
+    """
+    old_filepath = get_group_memory_path(old_group_id)
+    new_filepath = get_group_memory_path(new_group_id)
+    old_lock_path = old_filepath.with_suffix(".yaml.lock")
+
+    if not old_filepath.exists():
+        raise FileNotFoundError(f"El proyecto original '{old_group_id}' no existe.")
+    if new_filepath.exists():
+        raise FileExistsError(f"Ya existe un proyecto con el nombre '{new_group_id}'.")
+
+    try:
+        with FileLock(old_lock_path, timeout=5):
+            # Leer el contenido, actualizar el metadato y escribir en el nuevo fichero
+            with open(old_filepath, "r", encoding="utf-8") as f:
+                state = yaml.safe_load(f) or {}
+
+            state.setdefault("meta", {})["group_id"] = new_group_id
+
+            with open(new_filepath, "w", encoding="utf-8") as f:
+                yaml.dump(state, f, default_flow_style=False, allow_unicode=True)
+
+            # Si la escritura fue exitosa, eliminar el fichero antiguo
+            old_filepath.unlink()
+
+    except Timeout:
+        raise IOError(f"No se pudo bloquear el proyecto '{old_group_id}' para renombrarlo.")
+    except (IOError, yaml.YAMLError) as e:
+        raise IOError(f"Error de E/S al renombrar el proyecto: {e}") from e
 
 def persist_message(group_id: str, message: schemas.MessageIngest):
     """
@@ -115,7 +186,7 @@ def persist_message(group_id: str, message: schemas.MessageIngest):
             z_scores = {}
             for key in ["arousal", "valence", "uncertainty"]:
                 # Usar .get() para evitar fallos si el analizador aún no provee todas las señales
-                raw_val = raw_signals.get(f"raw_{key}", 0.0)
+                raw_val = raw_signals.get(f"raw_{key}", 0.0) # <-- Cambio clave
                 # Actualizar media
                 stats[f"ewma_{key}"] = alpha * raw_val + (1 - alpha) * stats[f"ewma_{key}"]
                 # Actualizar varianza (usando la media de los cuadrados)
@@ -164,46 +235,6 @@ def get_group_state(group_id: str):
     with open(filepath, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-def get_group_affective_state(group_id: str, window_minutes: int = 10) -> dict:
-    """
-    Calcula el estado afectivo agregado de un grupo (temperatura emocional)
-    basándose en los mensajes recientes.
-    """
-    state = get_group_state(group_id)
-    if not state or "log" not in state:
-        return {"group_arousal_z": 0.0, "active_users": 0}
-
-    now_utc = datetime.utcnow()
-    recent_arousal_scores = []
-
-    # Iterar sobre el log en orden inverso para encontrar mensajes recientes
-    for record in reversed(state.get("log", [])):
-        if record.get("type") != "message" or "affective_proxy" not in record:
-            continue
-
-        ts_str = record.get("ts")
-        if not ts_str:
-            continue
-
-        try:
-            # El timestamp en YAML es un string ISO. Lo convertimos a datetime naive UTC.
-            ts_utc = datetime.fromisoformat(ts_str).replace(tzinfo=None)
-
-            if (now_utc - ts_utc).total_seconds() / 60 > window_minutes:
-                break  # Salir si el mensaje es más antiguo que la ventana de tiempo
-
-            recent_arousal_scores.append(record["affective_proxy"]["arousal_z"])
-        except (ValueError, TypeError):
-            continue  # Ignorar registros con timestamp mal formado o tipo incorrecto
-
-    if not recent_arousal_scores:
-        return {"group_arousal_z": 0.0, "active_users": 0}
-
-    # Usar la mediana para ser robusto a outliers (valores extremos de un solo mensaje)
-    median_arousal = statistics.median(recent_arousal_scores)
-
-    return {"group_arousal_z": median_arousal}
-
 def get_affective_history(group_id: str, since_hours: int = 24) -> dict:
     """
     Recupera el historial de 'arousal_z' de un grupo para un período determinado.
@@ -230,6 +261,83 @@ def get_affective_history(group_id: str, since_hours: int = 24) -> dict:
             continue
 
     return {"history": history_points}
+
+def has_recent_alerts(group_id: str, since_hours: int = 24) -> bool:
+    """
+    Comprueba si un grupo tiene alertas en las últimas 'since_hours'.
+    Es una comprobación simple y sin estado, ideal para la UI.
+    """
+    state = get_group_state(group_id)
+    if not state or "log" not in state:
+        return False
+
+    since_ts = datetime.utcnow() - timedelta(hours=since_hours)
+
+    # Iterar desde el final es más eficiente si los logs son grandes.
+    for record in reversed(state.get("log", [])):
+        try:
+            ts = datetime.fromisoformat(record.get("ts", "")).replace(tzinfo=None)
+            if ts < since_ts:
+                return False # Hemos salido de la ventana de tiempo
+            if record.get("type") == "alert":
+                return True # Encontramos una alerta reciente
+        except (ValueError, TypeError):
+            continue
+    return False
+
+def get_group_metrics(group_id: str, window_minutes: int = 10, friction_window_hours: int = 24) -> dict:
+    """
+    Calcula y devuelve las métricas clave de un grupo en tiempo real.
+    """
+    state = get_group_state(group_id)
+    if not state or "log" not in state:
+        return {
+            "friction_index": 0.0,
+            "affective_proxy": {"arousal_z": 0.0, "valence_z": 0.0, "uncertainty_z": 0.0}
+        }
+
+    log = state.get("log", [])
+    now_utc = datetime.utcnow()
+
+    # --- Cálculo del Affective Proxy (ventana corta) ---
+    affective_window_start = now_utc - timedelta(minutes=window_minutes)
+    recent_proxies = [
+        r["affective_proxy"]
+        for r in reversed(log)
+        if r.get("type") == "message"
+        and "affective_proxy" in r
+        and datetime.fromisoformat(r["ts"]).replace(tzinfo=None) > affective_window_start
+    ]
+
+    if recent_proxies:
+        median_arousal = statistics.median([p["arousal_z"] for p in recent_proxies])
+        median_valence = statistics.median([p.get("valence_z", 0.0) for p in recent_proxies])
+        median_uncertainty = statistics.median([p.get("uncertainty_z", 0.0) for p in recent_proxies])
+    else:
+        median_arousal, median_valence, median_uncertainty = 0.0, 0.0, 0.0
+
+    # --- Cálculo del Friction Index (ventana larga) ---
+    friction_window_start = now_utc - timedelta(hours=friction_window_hours)
+    message_count = 0
+    alert_count = 0
+    for record in reversed(log):
+        try:
+            ts = datetime.fromisoformat(record.get("ts", "")).replace(tzinfo=None)
+            if ts < friction_window_start:
+                break # Salimos de la ventana de tiempo
+            if record.get("type") == "message":
+                message_count += 1
+            elif record.get("type") == "alert":
+                alert_count += 1
+        except (ValueError, TypeError):
+            continue
+
+    friction_index = (alert_count / message_count) if message_count > 0 else 0.0
+
+    return {
+        "friction_index": friction_index,
+        "affective_proxy": {"arousal_z": median_arousal, "valence_z": median_valence, "uncertainty_z": median_uncertainty}
+    }
 
 def check_and_suggest_pause(group_id: str, state: dict):
     """

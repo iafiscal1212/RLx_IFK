@@ -76,6 +76,7 @@ def process_group(group_id: str):
             if not should_run_summary(group_id, state):
                 return
 
+            # Cargar nombres de usuario para la extracción de acciones
             profile = _load_group_profile(group_id)
             user_names = profile.get("users", [])
             lang = profile.get("default_lang", "es") # Usa 'es' como fallback

@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Local instance data that should not be committed
+local_bundle/
+
+# Reports and logs
+reports/
+*.log
+
+# IDE-specific
+.vscode/

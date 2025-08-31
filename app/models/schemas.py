@@ -40,10 +40,6 @@ class AlertRecord(BaseModel):
     trigger_ref: str = Field(description="ID del mensaje que disparó la alerta.")
     details: AlertDetails
 
-class AffectiveStateResponse(BaseModel):
-    group_arousal_z: float = Field(description="Mediana normalizada del Arousal del grupo en la última ventana de tiempo.")
-    active_users: int = Field(description="Número de usuarios que contribuyeron al cálculo.")
-
 class AffectiveHistoryPoint(BaseModel):
     ts: datetime = Field(description="Timestamp del punto de datos.")
     value: float = Field(description="Valor de arousal_z en ese momento.")
@@ -73,6 +69,7 @@ class DailySummaryDetails(BaseModel):
     topics: list[str] = Field(description="Temas más discutidos extraídos del día.")
     decisions: list[str] = Field(description="Decisiones o acuerdos clave identificados.")
     actions: list[ActionItem] = Field(description="Acciones o tareas asignadas a miembros del equipo.")
+    active_members: list[str] = Field(description="Miembros más activos del día por número de mensajes.")
     general_sentiment: float | None = Field(None, description="Sentimiento general del día (-1 a 1, basado en la media de valence_z).")
     message_count: int = Field(description="Número de mensajes analizados para este resumen.")
 
@@ -83,11 +80,22 @@ class DailySummaryRecord(BaseModel):
     type: str = "daily_summary"
     details: DailySummaryDetails
 
+# --- Modelos para Métricas en Tiempo Real ---
+
+class GroupAffectiveMetrics(BaseModel):
+    arousal_z: float
+    valence_z: float
+    uncertainty_z: float
+
+class GroupMetricsResponse(BaseModel):
+    friction_index: float = Field(description="Ratio de alertas sobre mensajes en las últimas 24h.")
+    affective_proxy: GroupAffectiveMetrics = Field(description="Métricas afectivas agregadas para el grupo.")
 # --- Modelos para la lista de grupos ---
 
 class GroupInfo(BaseModel):
     group_id: str
     last_modified: datetime
+    has_recent_alerts: bool = Field(False, description="Indica si el grupo tiene alertas no vistas o recientes.")
 
 class GroupListResponse(BaseModel):
     groups: list[GroupInfo]
@@ -96,3 +104,9 @@ class GroupListResponse(BaseModel):
 
 class CreateGroupRequest(BaseModel):
     group_id: str = Field(..., description="El ID del nuevo grupo a crear. Debe ser alfanumérico con guiones/guiones bajos.")
+    template: str | None = Field(None, description="Plantilla opcional para inicializar el grupo (ej. 'scientific', 'business').")
+
+# --- Modelo para renombrar un grupo ---
+
+class RenameGroupRequest(BaseModel):
+    new_group_id: str = Field(..., description="El nuevo ID para el proyecto.")
