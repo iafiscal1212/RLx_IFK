@@ -73,6 +73,7 @@ class DailySummaryDetails(BaseModel):
     topics: list[str] = Field(description="Temas más discutidos extraídos del día.")
     decisions: list[str] = Field(description="Decisiones o acuerdos clave identificados.")
     actions: list[ActionItem] = Field(description="Acciones o tareas asignadas a miembros del equipo.")
+    general_sentiment: float | None = Field(None, description="Sentimiento general del día (-1 a 1, basado en la media de valence_z).")
     message_count: int = Field(description="Número de mensajes analizados para este resumen.")
 
 class DailySummaryRecord(BaseModel):

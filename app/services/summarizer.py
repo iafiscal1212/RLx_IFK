@@ -1,42 +1,29 @@
 import re
+import yaml
 from collections import Counter
 from datetime import datetime, timedelta
+import statistics
+from pathlib import Path
+from functools import lru_cache
 
-# Stopwords simples por idioma. En un sistema real, esto podría ser más completo.
-STOPWORDS = {
-    "es": {
-        "a", "ante", "bajo", "con", "contra", "de", "desde", "en", "entre", "hacia", "hasta", "para", "por", "según",
-        "sin", "sobre", "tras", "el", "la", "los", "las", "un", "una", "unos", "unas", "y", "o", "pero", "si", "que",
-        "no", "es", "del", "al", "se", "lo", "su", "me", "le", "les"
-    },
-    "en": {
-        "and", "the", "is", "in", "it", "of", "to", "for", "with", "on", "at", "by", "an", "a", "that", "this",
-        "we", "you", "he", "she", "they", "are", "was", "were", "be", "i", "as", "not", "if", "or", "but"
-    }
-}
+RULES_PATH = Path(__file__).parent.parent / "i18n/summarizer_rules.yaml"
 
-DECISION_KEYWORDS = {
-    "es": [
-        "acuerdo:", "decisión:", "acordado:", "decidido:", "aprobado:"
-    ],
-    "en": [
-        "decision:", "approved:", "agreement:", "decided:"
-    ]
-}
-
-# Patrones para detectar acciones asignadas. {user_names_re} se reemplazará dinámicamente.
-ACTION_PATTERNS = {
-    "es": [
-        r"(?P<assignee>{user_names_re})\s+(se encargará de|es responsable de|hará|revisará)\s+(?P<task>.+)",
-        r"acción para (?P<assignee>{user_names_re}):\s+(?P<task>.+)",
-        r"asignado a (?P<assignee>{user_names_re}):\s+(?P<task>.+)",
-    ],
-    "en": [
-        r"(?P<assignee>{user_names_re})\s+(will handle|is responsible for|will review|will do)\s+(?P<task>.+)",
-        r"action for (?P<assignee>{user_names_re}):\s+(?P<task>.+)",
-        r"assigned to (?P<assignee>{user_names_re}):\s+(?P<task>.+)",
-    ]
-}
+@lru_cache(maxsize=1)
+def _load_summarizer_rules() -> dict:
+    """Carga las reglas (stopwords, keywords, patterns) desde un fichero YAML."""
+    if not RULES_PATH.exists():
+        return {"stopwords": {}, "decision_keywords": {}, "action_patterns": {}}
+    try:
+        with open(RULES_PATH, "r", encoding="utf-8") as f:
+            rules = yaml.safe_load(f) or {}
+        # Convertir listas de stopwords a sets para búsquedas eficientes
+        if "stopwords" in rules and isinstance(rules["stopwords"], dict):
+            for lang, words in rules["stopwords"].items():
+                if isinstance(words, list):
+                    rules["stopwords"][lang] = set(words)
+        return rules
+    except (IOError, yaml.YAMLError):
+        return {"stopwords": {}, "decision_keywords": {}, "action_patterns": {}}
 
 def _simple_stem_es(word: str) -> str:
     """
@@ -77,7 +64,8 @@ def _extract_topics(texts: list[str], lang: str, top_n: int = 5) -> list[str]:
     if not texts:
         return []
 
-    stopwords_for_lang = STOPWORDS.get(lang, set())
+    rules = _load_summarizer_rules()
+    stopwords_for_lang = rules.get("stopwords", {}).get(lang, set())
     full_text = " ".join(texts).lower()
     words = re.findall(r'\b\w{3,}\b', full_text) # Palabras de 3 o más letras
 
@@ -105,7 +93,8 @@ def _extract_topics(texts: list[str], lang: str, top_n: int = 5) -> list[str]:
 def _extract_decisions(records: list[dict], lang: str) -> list[str]:
     """Extrae decisiones de una lista de registros de log."""
     decisions = []
-    keywords_for_lang = DECISION_KEYWORDS.get(lang, [])
+    rules = _load_summarizer_rules()
+    keywords_for_lang = rules.get("decision_keywords", {}).get(lang, [])
 
     for record in records:
         text = record.get("text", "").lower()
@@ -128,7 +117,8 @@ def _extract_actions(records: list[dict], lang: str, user_names: list[str]) -> l
         return []
 
     actions = []
-    patterns_for_lang = ACTION_PATTERNS.get(lang, [])
+    rules = _load_summarizer_rules()
+    patterns_for_lang = rules.get("action_patterns", {}).get(lang, [])
 
     # Crea una expresión regular que busca cualquiera de los nombres de usuario.
     user_names_re = '|'.join(re.escape(name) for name in user_names)
@@ -155,6 +145,19 @@ def _extract_actions(records: list[dict], lang: str, user_names: list[str]) -> l
             break # Ir al siguiente mensaje si se encontró una acción en la línea
     return actions
 
+def _calculate_general_sentiment(log_records: list[dict]) -> float | None:
+    """Calcula el sentimiento general del día basado en la media de valence_z."""
+    valence_scores = [
+        r["affective_proxy"]["valence_z"]
+        for r in log_records
+        if r.get("type") == "message" and r.get("affective_proxy") and "valence_z" in r["affective_proxy"]
+    ]
+
+    if not valence_scores:
+        return None
+
+    return statistics.mean(valence_scores)
+
 def generate_daily_summary(log_records: list[dict], lang: str = "es", user_names: list[str] | None = None) -> dict:
     """Genera un resumen diario a partir de los registros de log."""
     messages = [r for r in log_records if r.get("type") == "message"]
@@ -163,5 +166,6 @@ def generate_daily_summary(log_records: list[dict], lang: str = "es", user_names
     topics = _extract_topics(message_texts, lang=lang)
     decisions = _extract_decisions(messages, lang=lang)
     actions = _extract_actions(messages, lang=lang, user_names=user_names or [])
+    sentiment = _calculate_general_sentiment(messages)
 
-    return {"topics": topics, "decisions": decisions, "actions": actions, "message_count": len(messages)}
+    return {"topics": topics, "decisions": decisions, "actions": actions, "general_sentiment": sentiment, "message_count": len(messages)}
