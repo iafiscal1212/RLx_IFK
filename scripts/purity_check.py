@@ -8,7 +8,7 @@ from .utils import read_file_content
 BANNED_NET = ["requests","urllib","urllib3","httpx","aiohttp","websocket","websockets","grpc","paramiko","boto3","paho","pika","kafka","pulsar","ftplib","smtplib","imaplib"]
 REMOTE_URL = re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\\{\}\[\]]+")
 REQ = ["data/shield_patterns.yaml"]; OPT = ["data/prompt_fingerprint.model.json"]
-SCAN_DIRS=["predict","train", "rlx_sat", "tuner", "tools"]
+SCAN_DIRS=["predict","train", "rlx_sat", "tuner", "tools", "i18n", "renderer", "rlx_backend"]
 def run(cmd): p=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True); return p.returncode,p.stdout
 def sha256f(p): import hashlib; h=hashlib.sha256(); f=open(p,"rb");
 for chunk in iter(lambda:f.read(1048576), b""): h.update(chunk)
