@@ -54,6 +54,7 @@ def send_message(message: ChatMessageIn):
 
         # Build neutral structure
         structure = interlingua.build_structure(message.text)
+        structure['src_lang'] = src_lang
 
         # Localize
         gloss_view = localize.localize(structure, target_lang)

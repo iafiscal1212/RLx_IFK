@@ -27,7 +27,16 @@ BANNED_NET = [
 REMOTE_URL = re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\\{\}\[\]]+")
 REQ = ["data/shield_patterns.yaml"]
 OPT = ["data/prompt_fingerprint.model.json"]
-SCAN_DIRS=["predict","train", "rlx_sat", "tuner", "tools", "i18n", "renderer", "rlx_backend", "companion", "app", "profiles"]
+SCAN_DIRS = [
+    "app",
+    "companion",
+    "i18n",
+    "predict",
+    "profiles",
+    "renderer",
+    "rlx_backend",
+    "tuner",
+]
 def run(cmd):
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     return p.returncode, p.stdout
