@@ -5,14 +5,12 @@ from datetime import datetime
 
 from ..models import schemas
 from . import analyzer
+from ..core.policies import AROUSAL_SPIKE_THRESHOLD
 
 # Directorio donde se guardará la memoria persistente.
 # Debe estar fuera del código fuente, como se especifica en la arquitectura.
 MEMORY_DIR = Path("local_bundle/groups")
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
-
-# Umbral definido en la política de ética (ethics/policies.yaml)
-AROUSAL_SPIKE_THRESHOLD = 1.5
 
 def get_group_memory_path(group_id: str) -> Path:
     """Construye la ruta al fichero YAML de memoria para un grupo."""
