@@ -16,8 +16,8 @@ jobs:
       - name: Black (check)
         run: black --check .
       - name: Bandit
-        run: bandit -r app || true
+        run: bandit -r app -c pyproject.toml
       - name: Tests
-        run: pytest -q || true
+        run: pytest -q
       - name: pip-audit
-        run: pip-audit -r requirements.txt || true
+        run: pip-audit -r requirements.txt
