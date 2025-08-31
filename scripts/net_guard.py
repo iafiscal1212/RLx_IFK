@@ -2,7 +2,25 @@
 import sys, os, re, json, argparse, pathlib
 from scripts.utils import read_file_content
 
-LIBS=["requests","urllib","urllib3","httpx","aiohttp","websocket","websockets","grpc","paramiko","boto3","paho","pika","kafka","pulsar","ftplib","smtplib","imaplib"]
+LIBS = [
+    "requests",
+    "urllib",
+    "urllib3",
+    "httpx",
+    "aiohttp",
+    "websocket",
+    "websockets",
+    "grpc",
+    "paramiko",
+    "boto3",
+    "paho",
+    "pika",
+    "kafka",
+    "pulsar",
+    "ftplib",
+    "smtplib",
+    "imaplib",
+]
 EXTS={".py",".rs",".js",".ts",".tsx",".jsx",".json",".yaml",".yml",".toml",".md",".sh",".ps1"}
 URL=re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\\{\}\[\]]+")
 def main():
@@ -16,7 +34,8 @@ def main():
     endpoints = []
     for dp, _, fn in os.walk(args.root):
         for f in fn:
-            if pathlib.Path(f).suffix.lower() not in EXTS: continue
+            if pathlib.Path(f).suffix.lower() not in EXTS:
+                continue
             p = os.path.join(dp, f)
             txt = read_file_content(p)
             rel = os.path.relpath(p, args.root)

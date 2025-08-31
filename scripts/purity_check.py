@@ -5,7 +5,25 @@ Purity v2 — incluye verificación de Shield local y sin red en predict/train
 import subprocess, sys, os, json, argparse, pathlib, re, hashlib, datetime
 from scripts.utils import read_file_content
 
-BANNED_NET = ["requests","urllib","urllib3","httpx","aiohttp","websocket","websockets","grpc","paramiko","boto3","paho","pika","kafka","pulsar","ftplib","smtplib","imaplib"]
+BANNED_NET = [
+    "requests",
+    "urllib",
+    "urllib3",
+    "httpx",
+    "aiohttp",
+    "websocket",
+    "websockets",
+    "grpc",
+    "paramiko",
+    "boto3",
+    "paho",
+    "pika",
+    "kafka",
+    "pulsar",
+    "ftplib",
+    "smtplib",
+    "imaplib",
+]
 REMOTE_URL = re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\\{\}\[\]]+")
 REQ = ["data/shield_patterns.yaml"]
 OPT = ["data/prompt_fingerprint.model.json"]
@@ -45,7 +63,8 @@ def no_network_scan():
     report = {"files_with_net_libs": [], "files_with_remote_urls": []}
     for root in [d for d in SCAN_DIRS if os.path.isdir(d)]:
         for filepath in listf(root):
-            if not filepath.endswith((".py",".rs",".js",".ts",".tsx",".jsx",".sh",".ps1",".yaml",".yml",".json",".md")): continue
+            if not filepath.endswith((".py",".rs",".js",".ts",".tsx",".jsx",".sh",".ps1",".yaml",".yml",".json",".md")):
+                continue
             txt = read_file_content(filepath)
             hits = []
             for lib in BANNED_NET:
@@ -72,9 +91,21 @@ def main():
         "status": "PASS"
     }
     guards_to_run = [
-        ("llm_guard", ["python3", "scripts/llm_guard.py", "--root", args.root, "--out", "reports/llm_guard_report.json"]),
-        ("net_guard", ["python3", "scripts/net_guard.py", "--root", args.root, "--out", "reports/net_guard_report.json"]),
-        ("secrets_guard", ["python3", "scripts/secrets_guard.py", "--root", args.root, "--out", "reports/secrets_guard_report.json"])
+        (
+            "llm_guard",
+            ["python3", "scripts/llm_guard.py", "--root", args.root, "--out", "reports/llm_guard_report.json"],
+        ),
+        (
+            "net_guard",
+            ["python3", "scripts/net_guard.py", "--root", args.root, "--out", "reports/net_guard_report.json"],
+        ),
+        (
+            "secrets_guard",
+            [
+                "python3", "scripts/secrets_guard.py", "--root", args.root, "--out",
+                "reports/secrets_guard_report.json",
+            ],
+        ),
     ]
     for name, cmd in guards_to_run:
         rc, out = run(cmd)
