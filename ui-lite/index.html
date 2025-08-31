@@ -10,6 +10,12 @@
     <header>
         <h1>RLx</h1>
         <div class="header-right">
+            <div class="theme-switch-wrapper">
+                <label class="theme-switch" for="theme-switch-checkbox" title="Cambiar tema">
+                    <input type="checkbox" id="theme-switch-checkbox" />
+                    <div class="slider round"></div>
+                </label>
+            </div>
             <div class="lang-selector-wrapper">
                 <select id="lang-selector" title="Seleccionar idioma de la interfaz">
                     <option value="es">ES</option>
@@ -37,7 +43,13 @@
                 <p data-i18n-key="welcomeHelptext">RLx está observando y listo para ayudar.</p>
             </div>
             <div id="conversation-view" class="hidden">
-                <!-- La conversación del grupo seleccionado se mostrará aquí -->
+                <div id="log-container">
+                    <!-- Los items del log se renderizarán aquí -->
+                </div>
+                <form id="message-form">
+                    <input type="text" id="message-input" data-i18n-placeholder="messagePlaceholder" autocomplete="off" required>
+                    <button type="submit" data-i18n-key="sendBtn">Enviar</button>
+                </form>
             </div>
         </div>
     </main>

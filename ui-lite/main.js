@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const welcomeMessage = document.getElementById('welcome-message');
     const conversationView = document.getElementById('conversation-view');
     const createGroupBtn = document.querySelector('.create-group-btn');
+    const statusIndicator = document.querySelector('.status-indicator');
+    const themeSwitch = document.getElementById('theme-switch-checkbox');
     const langSelector = document.getElementById('lang-selector');
     // Elementos del modal de renombrar
     const renameModal = document.getElementById('rename-modal');
@@ -39,6 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'createModalTitle': 'Crear Nuevo Proyecto',
             'createBtn': 'Crear',
             'loadingBtn': 'Cargando...',
+            'messagePlaceholder': 'Escribe un mensaje...',
+            'sendBtn': 'Enviar',
+            'summaryTopics': 'Temas',
+            'summaryDecisions': 'Decisiones',
+            'summaryActions': 'Acciones',
             'createSuccess': "Proyecto '{groupId}' creado.",
             'renameSuccess': "Proyecto renombrado a '{newGroupId}'.",
             'deleteSuccess': "Proyecto '{groupId}' eliminado."
@@ -58,6 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'createModalTitle': 'Create New Project',
             'createBtn': 'Create',
             'loadingBtn': 'Loading...',
+            'messagePlaceholder': 'Write a message...',
+            'sendBtn': 'Send',
+            'summaryTopics': 'Topics',
+            'summaryDecisions': 'Decisions',
+            'summaryActions': 'Actions',
             'createSuccess': "Project '{groupId}' created.",
             'renameSuccess': "Project renamed to '{newGroupId}'.",
             'deleteSuccess': "Project '{groupId}' deleted."
@@ -119,21 +131,137 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.classList.add('active');
 
                 // Cargar la conversación (lógica futura)
-                loadConversation(group.group_id);
+                loadConversation(group.group_id, langSelector.value);
             });
             li.appendChild(groupNameSpan); // Contenedor para el nombre
             li.appendChild(renameBtn); // Botón de renombrar
             li.appendChild(deleteBtn);
             groupList.appendChild(li);
         });
+        updateUIText(langSelector.value);
     }
 
-    function loadConversation(groupId) {
-        welcomeMessage.classList.add('hidden');
-        conversationView.classList.remove('hidden');
-        conversationView.innerHTML = `<h2>Conversación de ${groupId}</h2><p>Cargando mensajes...</p>`;
-        // Aquí iría la lógica para llamar a GET /groups/{groupId}/state y renderizar los mensajes
-        console.log(`Cargando conversación para ${groupId}...`);
+    async function loadConversation(groupId, lang) {
+        try {
+            welcomeMessage.classList.add('hidden');
+            conversationView.classList.remove('hidden');
+            conversationView.dataset.currentGroupId = groupId;
+            conversationView.querySelector('#log-container').innerHTML = `<p class="loading">${I18N[lang].loadingBtn}</p>`;
+
+            const response = await fetch(`${API_BASE_URL}/groups/${groupId}/state`);
+            if (!response.ok) {
+                throw new Error(`Error al cargar el estado del grupo: ${response.statusText}`);
+            }
+            const state = await response.json();
+            renderLog(state.log || [], lang);
+
+            // Adjuntar el evento al formulario de mensajes
+            const messageForm = document.getElementById('message-form');
+            // Clonar y reemplazar para eliminar listeners antiguos
+            const newForm = messageForm.cloneNode(true);
+            conversationView.replaceChild(newForm, messageForm);
+            newForm.addEventListener('submit', handleMessageSubmit);
+            updateUIText(lang); // Para actualizar placeholders, etc.
+
+        } catch (error) {
+            console.error(`Error al cargar la conversación para ${groupId}:`, error);
+            showToast(error.message, 'error');
+            conversationView.querySelector('#log-container').innerHTML = `<p class="error">${error.message}</p>`;
+        }
+    }
+
+    function renderLog(log, lang) {
+        const logContainer = document.getElementById('log-container');
+        logContainer.innerHTML = ''; // Limpiar
+
+        if (log.length === 0) {
+            logContainer.innerHTML = `<p class="loading">No hay mensajes en este proyecto.</p>`;
+            return;
+        }
+
+        log.forEach(record => {
+            const logItem = createLogItemElement(record, lang);
+            logContainer.appendChild(logItem);
+        });
+
+        // Scroll hasta el final
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function createLogItemElement(record, lang) {
+        const item = document.createElement('div');
+        item.className = `log-item log-item--${record.type}`;
+
+        const header = document.createElement('div');
+        header.className = 'log-item__header';
+
+        const timestamp = document.createElement('span');
+        timestamp.className = 'log-item__timestamp';
+        timestamp.textContent = new Date(record.ts).toLocaleString();
+
+        switch (record.type) {
+            case 'message':
+                const author = document.createElement('strong');
+                author.className = 'log-item__author';
+                author.textContent = record.author;
+                header.appendChild(author);
+                header.appendChild(timestamp);
+                item.appendChild(header);
+                const text = document.createElement('p');
+                text.textContent = record.text;
+                text.style.margin = '0';
+                item.appendChild(text);
+                break;
+
+            case 'alert':
+                header.innerHTML = `<span class="log-item__icon">⚠️</span><strong>Alerta del Sistema</strong>`;
+                header.appendChild(timestamp);
+                item.appendChild(header);
+                const rationale = document.createElement('p');
+                rationale.textContent = record.details.rationale;
+                rationale.style.margin = '0';
+                item.appendChild(rationale);
+                break;
+
+            case 'daily_summary':
+                header.innerHTML = `<span class="log-item__icon">📋</span><strong>Resumen Diario</strong>`;
+                header.appendChild(timestamp);
+                item.appendChild(header);
+                item.appendChild(createSummarySection(I18N[lang].summaryTopics, record.details.topics, lang));
+                item.appendChild(createSummarySection(I18N[lang].summaryDecisions, record.details.decisions, lang));
+                item.appendChild(createSummarySection(I18N[lang].summaryActions, record.details.actions, lang, true));
+                break;
+
+            case 'suggestion':
+                header.innerHTML = `<span class="log-item__icon">💡</span><strong>Sugerencia de RLx</strong>`;
+                header.appendChild(timestamp);
+                item.appendChild(header);
+                const suggestionText = document.createElement('p');
+                suggestionText.textContent = record.details.suggestion_text;
+                suggestionText.style.margin = '0';
+                item.appendChild(suggestionText);
+                break;
+
+            default:
+                item.textContent = `Tipo de registro desconocido: ${record.type}`;
+        }
+        return item;
+    }
+
+    function createSummarySection(title, items, lang, isAction = false) {
+        const section = document.createElement('div');
+        if (!items || items.length === 0) return section;
+
+        section.className = 'summary-section';
+        section.innerHTML = `<h4>${title}</h4>`;
+        const ul = document.createElement('ul');
+        items.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = isAction ? `${item.assignee}: ${item.task}` : item;
+            ul.appendChild(li);
+        });
+        section.appendChild(ul);
+        return section;
     }
 
     function createGroup() {
@@ -141,6 +269,31 @@ document.addEventListener('DOMContentLoaded', () => {
         createGroupIdInput.value = '';
         createModal.classList.remove('hidden');
         createGroupIdInput.focus();
+    }
+
+    async function handleMessageSubmit(event) {
+        event.preventDefault();
+        const input = document.getElementById('message-input');
+        const text = input.value.trim();
+        const groupId = conversationView.dataset.currentGroupId;
+
+        if (!text || !groupId) return;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/groups/${groupId}/ingest`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ author: 'Carmen', text: text }), // Autor hardcodeado por ahora
+            });
+            if (!response.ok) {
+                throw new Error(`Error al enviar el mensaje: ${response.statusText}`);
+            }
+            input.value = '';
+            loadConversation(groupId, langSelector.value); // Recargar para ver el nuevo mensaje
+        } catch (error) {
+            console.error('Error al enviar mensaje:', error);
+            showToast(error.message, 'error');
+        }
     }
 
     async function handleCreateSubmit(event) {
@@ -336,8 +489,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const key = el.dataset.i18nKey;
             if (I18N[lang] && I18N[lang][key]) {
                 el.textContent = I18N[lang][key];
+        }
+        const placeholderKey = el.dataset.i18nPlaceholder;
+        if (I18N[lang] && I18N[lang][placeholderKey]) {
+            el.placeholder = I18N[lang][placeholderKey];
             }
         });
+    }
+
+    async function checkHealth() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/health`);
+            statusIndicator.classList.toggle('online', response.ok);
+            statusIndicator.classList.toggle('offline', !response.ok);
+        } catch (error) {
+            statusIndicator.classList.remove('online');
+            statusIndicator.classList.add('offline');
+        }
     }
 
     function handleLangChange() {
@@ -356,8 +524,27 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUIText(savedLang);
     }
 
+    function handleThemeChange() {
+        if (themeSwitch.checked) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('rlx-ui-theme', 'dark');
+        } else {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('rlx-ui-theme', 'light');
+        }
+    }
+
+    function loadThemePreference() {
+        const savedTheme = localStorage.getItem('rlx-ui-theme');
+        if (savedTheme === 'dark') {
+            themeSwitch.checked = true;
+            document.body.classList.add('dark-mode');
+        }
+    }
+
     createGroupBtn.addEventListener('click', createGroup);
     langSelector.addEventListener('change', handleLangChange);
+    themeSwitch.addEventListener('change', handleThemeChange);
 
     // Eventos del modal de renombrar
     renameForm.addEventListener('submit', handleRenameSubmit);
@@ -383,4 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Carga inicial
     fetchGroups();
     loadLangPreference();
+    loadLangPreference();
+    checkHealth();
+    setInterval(checkHealth, 15000); // Comprobar cada 15 segundos
 });
