@@ -27,7 +27,7 @@ BANNED_NET = [
 REMOTE_URL = re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\\{\}\[\]]+")
 REQ = ["data/shield_patterns.yaml"]
 OPT = ["data/prompt_fingerprint.model.json"]
-SCAN_DIRS=["predict","train", "rlx_sat", "tuner", "tools", "i18n", "renderer", "rlx_backend", "companion"]
+SCAN_DIRS=["predict","train", "rlx_sat", "tuner", "tools", "i18n", "renderer", "rlx_backend", "companion", "app", "profiles"]
 def run(cmd):
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     return p.returncode, p.stdout
@@ -74,7 +74,10 @@ def no_network_scan():
                 report["files_with_net_libs"].append({"file": filepath, "libs": sorted(set(hits))})
             urls = REMOTE_URL.findall(txt)
             if urls:
-                report["files_with_remote_urls"].append({"file": filepath, "urls": sorted(set(urls))[:10]})
+                report["files_with_remote_urls"].append({
+                    "file": filepath,
+                    "urls": sorted(set(urls))[:10]
+                })
     return report
 def main():
     ap = argparse.ArgumentParser()
@@ -93,16 +96,26 @@ def main():
     guards_to_run = [
         (
             "llm_guard",
-            ["python3", "scripts/llm_guard.py", "--root", args.root, "--out", "reports/llm_guard_report.json"],
+            [
+                "python3", "scripts/llm_guard.py", "--root", args.root,
+                "--out", "reports/llm_guard_report.json"
+            ],
         ),
         (
             "net_guard",
-            ["python3", "scripts/net_guard.py", "--root", args.root, "--out", "reports/net_guard_report.json"],
+            [
+                "python3", "scripts/net_guard.py", "--root", args.root,
+                "--out", "reports/net_guard_report.json"
+            ],
         ),
         (
             "secrets_guard",
             [
-                "python3", "scripts/secrets_guard.py", "--root", args.root, "--out",
+                "python3",
+                "scripts/secrets_guard.py",
+                "--root",
+                args.root,
+                "--out",
                 "reports/secrets_guard_report.json",
             ],
         ),

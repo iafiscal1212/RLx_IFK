@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-import sys, os, re, json, argparse, pathlib
+import argparse
+import json
+import os
+import pathlib
+import re
+import sys
+
 from scripts.utils import read_file_content
 
 EXTS={".py",".rs",".js",".ts",".tsx",".jsx",".json",".yaml",".yml",".toml",".env",".ini",".cfg",".md",".sh",".ps1"}
