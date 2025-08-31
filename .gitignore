@@ -1,11 +1,42 @@
-pycache/
-*.pyc
-.env
-.lockbox/
-data/*.jsonl
-data/*.model.json
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
-# Excluir datos brutos y corpus generados
-/data/raw/
-/data/rlx_corpus/
-/.cache/
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Reports, local data, and secrets
+reports/
+local_bundle/
+*.log
+.secrets.baseline
+
+# IDE settings
+.vscode/
+.idea/

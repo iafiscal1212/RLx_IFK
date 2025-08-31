@@ -38,7 +38,7 @@ def main():
 
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(sbom, f, indent=2, ensure_ascii=False)
-    print("[OK]", args.out)
+    print(f"[OK] SBOM generated: {args.out}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()

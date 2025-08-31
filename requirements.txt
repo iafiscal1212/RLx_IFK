@@ -4,3 +4,4 @@ pyyaml
 regex
 psutil
 pydantic-settings
+httpx # For FastAPI TestClient
