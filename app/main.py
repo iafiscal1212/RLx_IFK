@@ -24,13 +24,15 @@ app = FastAPI(
     description="RLx — IA compañera de grupos (100% offline, sin tokens)"
 )
 
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/api/docs")
+
 app.include_router(core_router, prefix="/api/v1")
 if chat_router:
     app.include_router(chat_router, prefix="/api/v1")
 if i18n_router:
     app.include_router(i18n_router, prefix="/api/v1")
-
-
 
 # UI-Lite en raíz (ZTL, estática)
 app.mount("/", StaticFiles(directory="ui-lite", html=True), name="ui")
