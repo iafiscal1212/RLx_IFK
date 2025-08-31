@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLx - Panel de Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>RLx</h1>
+        <div class="status-indicator online" title="Conectado al servicio local"></div>
+    </header>
+
+    <main>
+        <div class="sidebar">
+            <h2>Proyectos</h2>
+            <ul id="group-list">
+                <!-- Los grupos se cargarán aquí dinámicamente -->
+                <li class="loading">Cargando proyectos...</li>
+            </ul>
+            <button class="create-group-btn">+ Nuevo Proyecto</button>
+        </div>
+
+        <div class="content-view">
+            <div id="welcome-message">
+                <h2>Bienvenida, Carmen.</h2>
+                <p>Selecciona un proyecto para ver la conversación o crea uno nuevo.</p>
+                <p>RLx está observando y listo para ayudar.</p>
+            </div>
+            <div id="conversation-view" class="hidden">
+                <!-- La conversación del grupo seleccionado se mostrará aquí -->
+            </div>
+        </div>
+    </main>
+
+    <script src="main.js"></script>
+</body>
+</html>

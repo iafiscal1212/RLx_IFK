@@ -2,4 +2,5 @@ ruff
 black
 bandit
 pytest
-requests
+pip-audit
+httpx # For FastAPI TestClient

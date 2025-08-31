@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-pyyaml
+pyyaml>=6.0 # Pin to a version without known vulnerabilities
 regex
 psutil
 pydantic-settings

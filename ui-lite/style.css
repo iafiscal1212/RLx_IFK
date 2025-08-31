@@ -1,0 +1,130 @@
+/* Estilos generales */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #1a202c;
+    color: #e2e8f0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: #2d3748;
+    border-bottom: 1px solid #4a5568;
+    flex-shrink: 0;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #a0aec0;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.status-indicator.online { background-color: #68d391; }
+.status-indicator.offline { background-color: #e53e3e; }
+
+/* Main Layout */
+main {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 280px;
+    background-color: #2d3748;
+    border-right: 1px solid #4a5568;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.sidebar h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #cbd5e0;
+}
+
+#group-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+#group-list li {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    transition: background-color 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#group-list li:hover {
+    background-color: #4a5568;
+}
+
+#group-list li.active {
+    background-color: #4299e1;
+    color: #1a202c;
+    font-weight: 600;
+}
+
+#group-list li.loading {
+    color: #a0aec0;
+    cursor: default;
+}
+
+.create-group-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #4299e1;
+    color: #1a202c;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 1rem;
+}
+.create-group-btn:hover {
+    background-color: #63b3ed;
+}
+
+.content-view {
+    flex-grow: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+#welcome-message {
+    text-align: center;
+    color: #a0aec0;
+    padding-top: 10vh;
+}
+
+#welcome-message h2 {
+    font-size: 2rem;
+    color: #e2e8f0;
+}
+
+.hidden {
+    display: none;
+}

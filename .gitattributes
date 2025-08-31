@@ -1,0 +1,4 @@
+* text=auto eol=lf
+local_bundle/** export-ignore
+.vscode/** export-ignore
+.venv/** export-ignore

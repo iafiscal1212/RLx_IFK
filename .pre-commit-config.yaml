@@ -1,23 +1,23 @@
 repos:
-  - repo: local
-    hooks:
-      - id: rlx-llm-guard
-        name: RLx LLM Guard
-        entry: python3 scripts/llm_guard.py --root .
-        language: system
-        pass_filenames: false
-      - id: rlx-net-guard
-        name: RLx Net Guard
-        entry: python3 scripts/net_guard.py --root .
-        language: system
-        pass_filenames: false
-      - id: rlx-secrets-guard
-        name: RLx Secrets Guard
-        entry: python3 scripts/secrets_guard.py --root .
-        language: system
-        pass_filenames: false
-      - id: rlx-purity
-        name: RLx Purity Check
-        entry: python3 scripts/purity_check.py --root .
-        language: system
-        pass_filenames: false
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.6.0
+  hooks:
+    - id: trailing-whitespace
+    - id: end-of-file-fixer
+    - id: check-yaml
+
+- repo: https://github.com/psf/black
+  rev: 24.8.0
+  hooks: [{id: black}]
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.6.9
+  hooks: [{id: ruff, args: ["--fix"]}]
+
+- repo: https://github.com/PyCQA/bandit
+  rev: 1.7.9
+  hooks: [{id: bandit, args: ["-r", "app"]}]
+
+- repo: https://github.com/Yelp/detect-secrets
+  rev: v1.5.0
+  hooks: [{id: detect-secrets, args: ["--baseline", ".secrets.baseline"], exclude: ".venv|local_bundle|ui"}]

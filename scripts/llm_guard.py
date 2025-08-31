@@ -1,8 +1,32 @@
 #!/usr/bin/env python3
 import sys, os, re, json, argparse, pathlib
-from .utils import read_file_content
+from scripts.utils import read_file_content
 
-BANNED = ["openai","anthropic","transformers","sentence_transformers","vllm","llama_cpp","llama-cpp-python","llama","gptq","exllama","auto_gptq","ctransformers","rwkv","ollama","langchain","llama_index","gpt4all","mistralai","groq","cohere","replicate","huggingface_hub","accelerate"]
+BANNED = [
+    "openai",
+    "anthropic",
+    "transformers",
+    "sentence_transformers",
+    "vllm",
+    "llama_cpp",
+    "llama-cpp-python",
+    "llama",
+    "gptq",
+    "exllama",
+    "auto_gptq",
+    "ctransformers",
+    "rwkv",
+    "ollama",
+    "langchain",
+    "llama_index",
+    "gpt4all",
+    "mistralai",
+    "groq",
+    "cohere",
+    "replicate",
+    "huggingface_hub",
+    "accelerate",
+]
 CRATES = ["llama","llm","gpt","tokenizers"]
 EXTS = {".py",".js",".ts",".tsx",".jsx",".json",".yaml",".yml",".toml",".md"}
 def main():
@@ -15,8 +39,10 @@ def main():
     viol = []
     for dp, _, fn in os.walk(args.root):
         for f in fn:
-            if pathlib.Path(f).suffix.lower() not in EXTS: continue
-            txt = read_file_content(os.path.join(dp, f)).lower()
+            if pathlib.Path(f).suffix.lower() not in EXTS:
+                continue
+            filepath = os.path.join(dp, f)
+            txt = read_file_content(filepath).lower()
             rel = os.path.relpath(os.path.join(dp, f), args.root)
             hits = [b for b in BANNED if re.search(rf'(?m)^\s*(from\s+{re.escape(b)}\s+import|import\s+{re.escape(b)}\b)|require\(["\']{re.escape(b)}["\']\)', txt)]
             if hits:

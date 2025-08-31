@@ -1,0 +1,12 @@
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W", "I", "C90"]
+
+[tool.bandit]
+# B108:hardcoded_tmp_directory - We are not using /tmp, but a controlled directory.
+# B110:try_except_pass - We might need this for some stubs.
+# B112:try_except_continue - We might need this for some stubs.
+skips = ["B108", "B110", "B112"]
