@@ -1,0 +1,54 @@
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RLx · Panel</title>
+<link rel="stylesheet" href="./styles.css"/>
+</head><body>
+<header class="bar">
+  <div class="brand">RLx · compañera (ZTL)</div>
+  <nav class="nav">
+    <a href="/api/docs" target="_blank">API Docs</a>
+  </nav>
+</header>
+
+<main class="grid">
+  <section class="card">
+    <h2>Estado</h2>
+    <div id="health" class="status">—</div>
+  </section>
+
+  <section class="card">
+    <h2>Enviar mensaje (grupo)</h2>
+    <form id="sendForm">
+      <label>Autor <input name="author" value="carmen" required></label>
+      <label>Texto <input name="text" placeholder="Reunión mañana 9:00. ¿Ok?" required></label>
+      <label>Grupo <input name="group_id" value="acme-core" required></label>
+      <button type="submit">Enviar</button>
+    </form>
+    <pre id="sendOut" class="out"></pre>
+  </section>
+
+  <section class="card">
+    <h2>Ver entrega (receptor)</h2>
+    <form id="deliveryForm">
+      <label>message_id <input name="message_id" placeholder="msg_..." required></label>
+      <label>receptor <input name="recipient" value="luis" required></label>
+      <button type="submit">Mostrar</button>
+    </form>
+    <pre id="deliveryOut" class="out"></pre>
+  </section>
+
+  <section class="card">
+    <h2>Render on-the-fly</h2>
+    <form id="renderForm">
+      <label>message_id <input name="message_id" placeholder="msg_..." required></label>
+      <label>receptor <input name="recipient" value="luis" required></label>
+      <label>lang destino <input name="lang" value="en" required></label>
+      <button type="submit">Render</button>
+    </form>
+    <pre id="renderOut" class="out"></pre>
+  </section>
+</main>
+
+<footer class="foot">Zero-Token · Zero-LLM · Low-Energy</footer>
+<script type="module" src="./app.js"></script>
+</body></html>

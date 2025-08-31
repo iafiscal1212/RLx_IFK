@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
+from fastapi.staticfiles import StaticFiles
+
+
 from .core.config import settings
 from .api.endpoints import router as core_router
 
@@ -15,6 +18,7 @@ except Exception:
     i18n_router = None
 
 app = FastAPI(
+    docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json",
     title=settings.PROJECT_NAME,
     version=settings.PROJECT_VERSION,
     description="RLx — IA compañera de grupos (100% offline, sin tokens)"
@@ -26,6 +30,7 @@ if chat_router:
 if i18n_router:
     app.include_router(i18n_router, prefix="/api/v1")
 
-@app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse(url="/docs")
+
+
+# UI-Lite en raíz (ZTL, estática)
+app.mount("/", StaticFiles(directory="ui-lite", html=True), name="ui")
