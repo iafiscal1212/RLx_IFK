@@ -1,54 +1,60 @@
-<!doctype html><html lang="es"><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>RLx · Panel</title>
-<link rel="stylesheet" href="./styles.css"/>
-</head><body>
-<header class="bar">
-  <div class="brand">RLx · compañera (ZTL)</div>
-  <nav class="nav">
-    <a href="/api/docs" target="_blank">API Docs</a>
-  </nav>
-</header>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLx · ZTL Companion</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>RLx · Compañera (ZTL)</h1>
+            <div class="api-status" id="api-status">
+                <span class="status-light"></span>
+                <span id="status-text">Conectando...</span>
+            </div>
+        </header>
 
-<main class="grid">
-  <section class="card">
-    <h2>Estado</h2>
-    <div id="health" class="status">—</div>
-  </section>
+        <main>
+            <div class="card">
+                <h2>Enviar Mensaje (Grupo)</h2>
+                <form id="send-form">
+                    <input type="text" id="author" value="carmen" required placeholder="Autor">
+                    <textarea id="text" required placeholder="Texto del mensaje">Reunión mañana 9:00. ¿Ok?</textarea>
+                    <input type="text" id="group_id" value="acme-core" required placeholder="Grupo">
+                    <button type="submit">Enviar</button>
+                </form>
+            </div>
 
-  <section class="card">
-    <h2>Enviar mensaje (grupo)</h2>
-    <form id="sendForm">
-      <label>Autor <input name="author" value="carmen" required></label>
-      <label>Texto <input name="text" placeholder="Reunión mañana 9:00. ¿Ok?" required></label>
-      <label>Grupo <input name="group_id" value="acme-core" required></label>
-      <button type="submit">Enviar</button>
-    </form>
-    <pre id="sendOut" class="out"></pre>
-  </section>
+            <div class="card">
+                <h2>Ver Entrega (Receptor)</h2>
+                <form id="delivery-form">
+                    <input type="text" id="delivery-msg-id" required placeholder="message_id">
+                    <input type="text" id="recipient" value="luis" required placeholder="receptor">
+                    <button type="submit">Mostrar</button>
+                </form>
+            </div>
 
-  <section class="card">
-    <h2>Ver entrega (receptor)</h2>
-    <form id="deliveryForm">
-      <label>message_id <input name="message_id" placeholder="msg_..." required></label>
-      <label>receptor <input name="recipient" value="luis" required></label>
-      <button type="submit">Mostrar</button>
-    </form>
-    <pre id="deliveryOut" class="out"></pre>
-  </section>
+            <div class="card">
+                <h2>Render On-the-fly</h2>
+                <form id="render-form">
+                    <input type="text" id="render-msg-id" required placeholder="message_id">
+                    <input type="text" id="render-recipient" value="luis" required placeholder="receptor">
+                    <input type="text" id="render-lang" value="en" required placeholder="lang destino">
+                    <button type="submit">Render</button>
+                </form>
+            </div>
 
-  <section class="card">
-    <h2>Render on-the-fly</h2>
-    <form id="renderForm">
-      <label>message_id <input name="message_id" placeholder="msg_..." required></label>
-      <label>receptor <input name="recipient" value="luis" required></label>
-      <label>lang destino <input name="lang" value="en" required></label>
-      <button type="submit">Render</button>
-    </form>
-    <pre id="renderOut" class="out"></pre>
-  </section>
-</main>
-
-<footer class="foot">Zero-Token · Zero-LLM · Low-Energy</footer>
-<script type="module" src="./app.js"></script>
-</body></html>
+            <div class="card result-card">
+                <h2>Resultado</h2>
+                <div class="toggle-container">
+                    <button id="clear-btn">Limpiar</button>
+                </div>
+                <pre id="result-box">El resultado de la API aparecerá aquí...</pre>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
