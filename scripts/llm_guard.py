@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys, os, re, json, argparse, pathlib
-from .utils import read_file_content
+from scripts.utils import read_file_content
 
 BANNED = ["openai","anthropic","transformers","sentence_transformers","vllm","llama_cpp","llama-cpp-python","llama","gptq","exllama","auto_gptq","ctransformers","rwkv","ollama","langchain","llama_index","gpt4all","mistralai","groq","cohere","replicate","huggingface_hub","accelerate"]
 CRATES = ["llama","llm","gpt","tokenizers"]

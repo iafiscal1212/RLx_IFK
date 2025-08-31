@@ -3,7 +3,7 @@
 Purity v2 — incluye verificación de Shield local y sin red en predict/train
 """
 import subprocess, sys, os, json, argparse, pathlib, re, hashlib, datetime
-from .utils import read_file_content
+from scripts.utils import read_file_content
 
 BANNED_NET = ["requests","urllib","urllib3","httpx","aiohttp","websocket","websockets","grpc","paramiko","boto3","paho","pika","kafka","pulsar","ftplib","smtplib","imaplib"]
 REMOTE_URL = re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\\{\}\[\]]+")

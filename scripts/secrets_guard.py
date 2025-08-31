@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys, os, re, json, argparse, pathlib
-from .utils import read_file_content
+from scripts.utils import read_file_content
 
 EXTS={".py",".rs",".js",".ts",".tsx",".jsx",".json",".yaml",".yml",".toml",".env",".ini",".cfg",".md",".sh",".ps1"}
 API=[

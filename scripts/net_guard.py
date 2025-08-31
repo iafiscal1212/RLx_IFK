@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys, os, re, json, argparse, pathlib
-from .utils import read_file_content
+from scripts.utils import read_file_content
 
 LIBS=["requests","urllib","urllib3","httpx","aiohttp","websocket","websockets","grpc","paramiko","boto3","paho","pika","kafka","pulsar","ftplib","smtplib","imaplib"]
 EXTS={".py",".rs",".js",".ts",".tsx",".jsx",".json",".yaml",".yml",".toml",".md",".sh",".ps1"}
