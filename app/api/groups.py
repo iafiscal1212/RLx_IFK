@@ -117,10 +117,17 @@ def get_group_state(group_id: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo no encontrado.")
     return state
 
-@router.get("/{group_id}/affective_state", response_model=schemas.AffectiveStateResponse)
-def get_group_affective_state(group_id: str):
-    """Devuelve la 'temperatura emocional' actual del grupo."""
-    return group_service.get_group_affective_state(group_id)
+@router.get("/{group_id}/metrics", response_model=schemas.GroupMetricsResponse)
+def get_group_metrics(group_id: str):
+    """Devuelve las métricas clave del grupo en tiempo real."""
+    try:
+        validate_group_id(group_id)
+        return group_service.get_group_metrics(group_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception:
+        # Log the error in a real app
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al calcular las métricas del grupo.")
 
 @router.get("/{group_id}/affective_history", response_model=schemas.AffectiveHistoryResponse)
 def get_group_affective_history(

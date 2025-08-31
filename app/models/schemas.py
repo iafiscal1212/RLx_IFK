@@ -40,10 +40,6 @@ class AlertRecord(BaseModel):
     trigger_ref: str = Field(description="ID del mensaje que disparó la alerta.")
     details: AlertDetails
 
-class AffectiveStateResponse(BaseModel):
-    group_arousal_z: float = Field(description="Mediana normalizada del Arousal del grupo en la última ventana de tiempo.")
-    active_users: int = Field(description="Número de usuarios que contribuyeron al cálculo.")
-
 class AffectiveHistoryPoint(BaseModel):
     ts: datetime = Field(description="Timestamp del punto de datos.")
     value: float = Field(description="Valor de arousal_z en ese momento.")
@@ -84,6 +80,16 @@ class DailySummaryRecord(BaseModel):
     type: str = "daily_summary"
     details: DailySummaryDetails
 
+# --- Modelos para Métricas en Tiempo Real ---
+
+class GroupAffectiveMetrics(BaseModel):
+    arousal_z: float
+    valence_z: float
+    uncertainty_z: float
+
+class GroupMetricsResponse(BaseModel):
+    friction_index: float = Field(description="Ratio de alertas sobre mensajes en las últimas 24h.")
+    affective_proxy: GroupAffectiveMetrics = Field(description="Métricas afectivas agregadas para el grupo.")
 # --- Modelos para la lista de grupos ---
 
 class GroupInfo(BaseModel):

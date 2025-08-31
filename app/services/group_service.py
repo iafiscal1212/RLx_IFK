@@ -234,46 +234,6 @@ def get_group_state(group_id: str):
     with open(filepath, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-def get_group_affective_state(group_id: str, window_minutes: int = 10) -> dict:
-    """
-    Calcula el estado afectivo agregado de un grupo (temperatura emocional)
-    basándose en los mensajes recientes.
-    """
-    state = get_group_state(group_id)
-    if not state or "log" not in state:
-        return {"group_arousal_z": 0.0, "active_users": 0}
-
-    now_utc = datetime.utcnow()
-    recent_arousal_scores = []
-
-    # Iterar sobre el log en orden inverso para encontrar mensajes recientes
-    for record in reversed(state.get("log", [])):
-        if record.get("type") != "message" or "affective_proxy" not in record:
-            continue
-
-        ts_str = record.get("ts")
-        if not ts_str:
-            continue
-
-        try:
-            # El timestamp en YAML es un string ISO. Lo convertimos a datetime naive UTC.
-            ts_utc = datetime.fromisoformat(ts_str).replace(tzinfo=None)
-
-            if (now_utc - ts_utc).total_seconds() / 60 > window_minutes:
-                break  # Salir si el mensaje es más antiguo que la ventana de tiempo
-
-            recent_arousal_scores.append(record["affective_proxy"]["arousal_z"])
-        except (ValueError, TypeError):
-            continue  # Ignorar registros con timestamp mal formado o tipo incorrecto
-
-    if not recent_arousal_scores:
-        return {"group_arousal_z": 0.0, "active_users": 0}
-
-    # Usar la mediana para ser robusto a outliers (valores extremos de un solo mensaje)
-    median_arousal = statistics.median(recent_arousal_scores)
-
-    return {"group_arousal_z": median_arousal}
-
 def get_affective_history(group_id: str, since_hours: int = 24) -> dict:
     """
     Recupera el historial de 'arousal_z' de un grupo para un período determinado.
@@ -323,6 +283,60 @@ def has_recent_alerts(group_id: str, since_hours: int = 24) -> bool:
         except (ValueError, TypeError):
             continue
     return False
+
+def get_group_metrics(group_id: str, window_minutes: int = 10, friction_window_hours: int = 24) -> dict:
+    """
+    Calcula y devuelve las métricas clave de un grupo en tiempo real.
+    """
+    state = get_group_state(group_id)
+    if not state or "log" not in state:
+        return {
+            "friction_index": 0.0,
+            "affective_proxy": {"arousal_z": 0.0, "valence_z": 0.0, "uncertainty_z": 0.0}
+        }
+
+    log = state.get("log", [])
+    now_utc = datetime.utcnow()
+
+    # --- Cálculo del Affective Proxy (ventana corta) ---
+    affective_window_start = now_utc - timedelta(minutes=window_minutes)
+    recent_proxies = [
+        r["affective_proxy"]
+        for r in reversed(log)
+        if r.get("type") == "message"
+        and "affective_proxy" in r
+        and datetime.fromisoformat(r["ts"]).replace(tzinfo=None) > affective_window_start
+    ]
+
+    if recent_proxies:
+        median_arousal = statistics.median([p["arousal_z"] for p in recent_proxies])
+        median_valence = statistics.median([p.get("valence_z", 0.0) for p in recent_proxies])
+        median_uncertainty = statistics.median([p.get("uncertainty_z", 0.0) for p in recent_proxies])
+    else:
+        median_arousal, median_valence, median_uncertainty = 0.0, 0.0, 0.0
+
+    # --- Cálculo del Friction Index (ventana larga) ---
+    friction_window_start = now_utc - timedelta(hours=friction_window_hours)
+    message_count = 0
+    alert_count = 0
+    for record in reversed(log):
+        try:
+            ts = datetime.fromisoformat(record.get("ts", "")).replace(tzinfo=None)
+            if ts < friction_window_start:
+                break # Salimos de la ventana de tiempo
+            if record.get("type") == "message":
+                message_count += 1
+            elif record.get("type") == "alert":
+                alert_count += 1
+        except (ValueError, TypeError):
+            continue
+
+    friction_index = (alert_count / message_count) if message_count > 0 else 0.0
+
+    return {
+        "friction_index": friction_index,
+        "affective_proxy": {"arousal_z": median_arousal, "valence_z": median_valence, "uncertainty_z": median_uncertainty}
+    }
 
 def check_and_suggest_pause(group_id: str, state: dict):
     """

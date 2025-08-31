@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelCreateBtn = document.getElementById('cancel-create-btn');
     const toastContainer = document.getElementById('toast-container');
 
+    let metricsIntervalId = null;
+
+    const LAST_SEEN_KEY = 'rlx-last-seen';
+
     const API_BASE_URL = '/api/v1';
 
     const I18N = {
@@ -51,6 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
             'summaryActions': 'Acciones',
             'copySummaryTitle': 'Copiar resumen al portapapeles',
             'copySuccess': 'Resumen copiado.',
+            'metricFrictionTitle': 'Índice de Fricción (alertas / mensajes en 24h)',
+            'metricArousalTitle': 'Energía del Grupo (Arousal Z-Score mediano en 10 min)',
+            'metricValenceTitle': 'Tono del Grupo (Valence Z-Score mediano en 10 min)',
+            'metricFrictionLabel': 'Fricción',
+            'metricArousalLabel': 'Energía',
+            'metricValenceLabel': 'Tono',
             'arousalSpikeToast': '¡Atención! Nivel de energía elevado detectado.',
             'suggestionToast': 'RLx tiene una nueva sugerencia para el grupo.',
             'templateLabel': 'Plantilla inicial',
@@ -87,6 +97,12 @@ document.addEventListener('DOMContentLoaded', () => {
             'summaryActions': 'Actions',
             'copySummaryTitle': 'Copy summary to clipboard',
             'copySuccess': 'Summary copied.',
+            'metricFrictionTitle': 'Friction Index (alerts / messages in 24h)',
+            'metricArousalTitle': 'Group Energy (median Arousal Z-Score in 10 min)',
+            'metricValenceTitle': 'Group Tone (median Valence Z-Score in 10 min)',
+            'metricFrictionLabel': 'Friction',
+            'metricArousalLabel': 'Energy',
+            'metricValenceLabel': 'Tone',
             'arousalSpikeToast': 'Attention! Elevated energy level detected.',
             'suggestionToast': 'RLx has a new suggestion for the group.',
             'templateLabel': 'Initial Template',
@@ -165,6 +181,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('#group-list li').forEach(item => item.classList.remove('active'));
                 li.classList.add('active');
 
+                // Si tenía una alerta, la eliminamos visualmente al hacer clic
+                if (li.classList.contains('has-alert')) {
+                    li.classList.remove('has-alert');
+                }
+
                 // Cargar la conversación (lógica futura)
                 loadConversation(group.group_id, langSelector.value);
             });
@@ -180,6 +201,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadConversation(groupId, lang) {
+        if (metricsIntervalId) {
+            clearInterval(metricsIntervalId);
+            metricsIntervalId = null;
+        }
+
         try {
             welcomeMessage.classList.add('hidden');
             conversationView.classList.remove('hidden');
@@ -192,8 +218,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`Error al cargar el estado del grupo: ${response.statusText}`);
             }
             const state = await response.json();
+
+            // --- Lógica para encontrar la primera alerta no vista ---
+            const lastSeenTimestamps = JSON.parse(localStorage.getItem(LAST_SEEN_KEY) || '{}');
+            const lastSeenTs = lastSeenTimestamps[groupId] ? new Date(lastSeenTimestamps[groupId]) : new Date(0);
+            let firstUnreadAlertId = null;
+
+            // Iteramos para encontrar la primera alerta más nueva que la última vez que se vio.
+            for (const record of (state.log || [])) {
+                if (record.type === 'alert' && new Date(record.ts) > lastSeenTs) {
+                    firstUnreadAlertId = record.msg_id;
+                    break; // Nos quedamos con la primera que encontramos
+                }
+            }
+            // --- Fin de la lógica ---
+
+            // Iniciar la actualización de métricas
+            updateMetrics(groupId);
+            metricsIntervalId = setInterval(() => updateMetrics(groupId), 7000);
+
             checkForNewNotifications(state.log || [], lang);
-            renderLog(state.log || [], lang);
+            renderLog(state.log || [], lang, firstUnreadAlertId); // Pasamos el ID para resaltarlo
+
+            // Si encontramos una alerta, hacemos scroll hacia ella y la resaltamos
+            if (firstUnreadAlertId) {
+                const alertElement = document.getElementById(`log-item-${firstUnreadAlertId}`);
+                if (alertElement) {
+                    alertElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Actualizamos el timestamp de "última vez visto" para este grupo
+            lastSeenTimestamps[groupId] = new Date().toISOString();
+            localStorage.setItem(LAST_SEEN_KEY, JSON.stringify(lastSeenTimestamps));
 
             // Adjuntar el evento al formulario de mensajes
             const messageForm = document.getElementById('message-form');
@@ -210,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderLog(log, lang) {
+    function renderLog(log, lang, highlightId = null) {
         const logContainer = document.getElementById('log-container');
         logContainer.innerHTML = ''; // Limpiar
 
@@ -220,17 +277,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         log.forEach(record => {
-            const logItem = createLogItemElement(record, lang);
+            const logItem = createLogItemElement(record, lang, highlightId);
             logContainer.appendChild(logItem);
         });
 
-        // Scroll hasta el final
-        logContainer.scrollTop = logContainer.scrollHeight;
+        // Scroll hasta el final, solo si no estamos haciendo scroll a una alerta específica
+        if (!highlightId) {
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
     }
 
-    function createLogItemElement(record, lang) {
+    function createLogItemElement(record, lang, highlightId = null) {
         const item = document.createElement('div');
         item.className = `log-item log-item--${record.type}`;
+        item.id = `log-item-${record.msg_id}`; // Asignar ID único
+
+        // Resaltar si coincide con el ID
+        if (record.msg_id === highlightId) {
+            item.classList.add('log-item--highlight');
+        }
 
         const header = document.createElement('div');
         header.className = 'log-item__header';
@@ -528,6 +593,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Si el proyecto eliminado era el activo, volver a la pantalla de bienvenida
             const activeItem = document.querySelector('#group-list li.active');
             if (activeItem && activeItem.dataset.groupId === groupId) {
+                // Detener la actualización de métricas
+                if (metricsIntervalId) {
+                    clearInterval(metricsIntervalId);
+                    metricsIntervalId = null;
+                }
+                // Limpiar el panel de métricas
+                resetMetricsPanel();
+
                 welcomeMessage.classList.remove('hidden');
                 conversationView.classList.add('hidden');
                 document.title = 'RLx - Panel de Control';
@@ -620,6 +693,57 @@ document.addEventListener('DOMContentLoaded', () => {
         const placeholderKey = el.dataset.i18nPlaceholder;
         if (I18N[lang] && I18N[lang][placeholderKey]) {
             el.placeholder = I18N[lang][placeholderKey];
+            }
+        const titleKey = el.dataset.i18nTitle;
+        if (I18N[lang] && I18N[lang][titleKey]) {
+            el.title = I18N[lang][titleKey];
+        }
+    });
+    }
+
+    async function updateMetrics(groupId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/groups/${groupId}/metrics`);
+            if (!response.ok) return; // Fallar silenciosamente, el panel simplemente no se actualizará
+            const metrics = await response.json();
+
+            const frictionEl = document.getElementById('metric-friction');
+            const arousalEl = document.getElementById('metric-arousal');
+            const valenceEl = document.getElementById('metric-valence');
+
+            if (frictionEl) {
+                frictionEl.textContent = metrics.friction_index.toFixed(2);
+                frictionEl.classList.toggle('is-high', metrics.friction_index > 0.25);
+            }
+            if (arousalEl) {
+                arousalEl.textContent = metrics.affective_proxy.arousal_z.toFixed(2);
+                arousalEl.classList.toggle('is-high', metrics.affective_proxy.arousal_z > 1.0);
+            }
+            if (valenceEl) {
+                valenceEl.textContent = metrics.affective_proxy.valence_z.toFixed(2);
+                valenceEl.classList.toggle('is-low', metrics.affective_proxy.valence_z < -0.5);
+            }
+
+        } catch (error) {
+            console.error(`Fallo al actualizar las métricas para ${groupId}:`, error);
+        }
+    }
+
+    function resetMetricsPanel() {
+        const frictionEl = document.getElementById('metric-friction');
+        const arousalEl = document.getElementById('metric-arousal');
+        const valenceEl = document.getElementById('metric-valence');
+        if (frictionEl) frictionEl.textContent = '0.00';
+        if (arousalEl) arousalEl.textContent = '0.00';
+        if (valenceEl) valenceEl.textContent = '0.00';
+        document.querySelectorAll('.metric-value').forEach(el => {
+            el.classList.remove('is-high', 'is-low');
+        });
+    }
+
+    async function checkHealth() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/health`);
             }
         });
     }

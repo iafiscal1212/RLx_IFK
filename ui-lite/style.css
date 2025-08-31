@@ -256,6 +256,40 @@ main {
     height: 100%;
 }
 
+/* --- Panel de Métricas --- */
+#metrics-panel {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--sidebar-bg);
+    flex-shrink: 0;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.metric-item {
+    text-align: center;
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    color: var(--text-color-light);
+    display: block;
+}
+
+.metric-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color);
+    transition: color 0.3s;
+}
+
+.metric-value.is-high { color: #f7768e; }
+body.dark-mode .metric-value.is-high { color: #f7768e; }
+
+.metric-value.is-low { color: var(--accent-color); }
+
+
 #log-container {
     flex-grow: 1;
     overflow-y: auto;
@@ -327,6 +361,11 @@ main {
 .log-item--suggestion {
     background-color: var(--log-item-suggestion-bg);
     border-color: #d6d8db;
+}
+
+.log-item--highlight {
+    /* Animación para resaltar la alerta recién encontrada */
+    animation: highlight-alert 2s ease-out;
 }
 
 .summary-section {
@@ -558,6 +597,18 @@ input:checked + .slider:before {
 @keyframes toast-in {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes highlight-alert {
+    0% {
+        background-color: var(--toast-warning-bg);
+        box-shadow: 0 0 12px var(--toast-warning-text);
+    }
+    100% {
+        /* Vuelve al color de fondo normal para una alerta */
+        background-color: var(--log-item-alert-bg);
+        box-shadow: none;
+    }
 }
 
 @keyframes toast-out {
