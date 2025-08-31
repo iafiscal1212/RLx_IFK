@@ -4,8 +4,8 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 
-from .core.config import settings
-from .api.endpoints import router as core_router
+from .api.endpoints import router as system_router
+from .api.groups import router as groups_router
 
 try:
     from .api.chat_endpoints import router as chat_router
@@ -19,16 +19,17 @@ except Exception:
 
 app = FastAPI(
     docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json",
-    title=settings.PROJECT_NAME,
-    version=settings.PROJECT_VERSION,
+    title="RLx API",
+    version="2.1.0",
     description="RLx — IA compañera de grupos (100% offline, sin tokens)"
 )
 
 @app.get("/", include_in_schema=False)
 def root():
-    return RedirectResponse(url="/api/docs")
+    return RedirectResponse(url="/index.html")
 
-app.include_router(core_router, prefix="/api/v1")
+app.include_router(system_router, prefix="/api/v1")
+app.include_router(groups_router, prefix="/api/v1")
 if chat_router:
     app.include_router(chat_router, prefix="/api/v1")
 if i18n_router:

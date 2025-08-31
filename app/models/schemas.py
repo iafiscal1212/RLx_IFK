@@ -39,3 +39,40 @@ class AlertRecord(BaseModel):
     alert_type: str = "arousal_spike_detected"
     trigger_ref: str = Field(description="ID del mensaje que disparó la alerta.")
     details: AlertDetails
+
+class AffectiveStateResponse(BaseModel):
+    group_arousal_z: float = Field(description="Mediana normalizada del Arousal del grupo en la última ventana de tiempo.")
+    active_users: int = Field(description="Número de usuarios que contribuyeron al cálculo.")
+
+class AffectiveHistoryPoint(BaseModel):
+    ts: datetime = Field(description="Timestamp del punto de datos.")
+    value: float = Field(description="Valor de arousal_z en ese momento.")
+
+class AffectiveHistoryResponse(BaseModel):
+    history: list[AffectiveHistoryPoint]
+
+class SuggestionDetails(BaseModel):
+    rationale: str
+    suggestion_text: str
+
+class SuggestionRecord(BaseModel):
+    msg_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ts: datetime = Field(default_factory=datetime.utcnow)
+    actor: str = "RLx"
+    type: str = "suggestion"
+    suggestion_type: str = "proactive_pause"
+    details: SuggestionDetails
+
+# --- Modelos para el Resumen Diario ---
+
+class DailySummaryDetails(BaseModel):
+    topics: list[str] = Field(description="Temas más discutidos extraídos del día.")
+    decisions: list[str] = Field(description="Decisiones o acuerdos clave identificados.")
+    message_count: int = Field(description="Número de mensajes analizados para este resumen.")
+
+class DailySummaryRecord(BaseModel):
+    msg_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ts: datetime = Field(default_factory=datetime.utcnow)
+    actor: str = "RLx"
+    type: str = "daily_summary"
+    details: DailySummaryDetails
