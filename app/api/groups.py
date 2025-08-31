@@ -17,7 +17,7 @@ def list_groups():
     """
     Lista todos los grupos (proyectos) disponibles, ordenados por modificación reciente.
     """
-    groups_dir = Path("local_bundle/groups")
+    groups_dir = group_service.MEMORY_DIR
     if not groups_dir.exists():
         return {"groups": []}
 

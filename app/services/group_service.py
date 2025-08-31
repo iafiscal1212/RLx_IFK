@@ -21,15 +21,16 @@ DEFAULT_PAUSE_DURATION_MIN = 5     # Duración por defecto de la pausa sugerida
 
 # Directorio donde se guardará la memoria persistente.
 # Debe estar fuera del código fuente, como se especifica en la arquitectura.
-MEMORY_DIR = Path("local_bundle/groups")
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+MEMORY_DIR = ROOT_DIR / "local_bundle/groups"
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 
 # Directorio de perfiles
-PROFILES_DIR = Path("profiles")
+PROFILES_DIR = ROOT_DIR / "profiles"
 PROFILES_DIR.mkdir(exist_ok=True)
 
 # Directorio de plantillas
-TEMPLATES_DIR = Path("templates")
+TEMPLATES_DIR = ROOT_DIR / "templates"
 TEMPLATES_DIR.mkdir(exist_ok=True)
 
 @lru_cache(maxsize=16)
