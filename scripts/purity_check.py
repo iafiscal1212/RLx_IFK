@@ -2,7 +2,15 @@
 """
 Purity v2 — incluye verificación de Shield local y sin red en predict/train
 """
-import subprocess, sys, os, json, argparse, pathlib, re, hashlib, datetime
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
 from scripts.utils import read_file_content
 
 BANNED_NET = [
@@ -24,7 +32,7 @@ BANNED_NET = [
     "smtplib",
     "imaplib",
 ]
-REMOTE_URL = re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\\{\}\[\]]+")
+REMOTE_URL = re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\{}[]]+")
 REQ = ["data/shield_patterns.yaml"]
 OPT = ["data/prompt_fingerprint.model.json"]
 SCAN_DIRS = [
@@ -37,7 +45,7 @@ SCAN_DIRS = [
     "rlx_backend",
     "tuner",
 ]
-def run(cmd):
+def run(cmd: list[str]) -> tuple[int, str]:
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     return p.returncode, p.stdout
 def sha256f(filepath):
@@ -82,11 +90,12 @@ def no_network_scan():
             if hits:
                 report["files_with_net_libs"].append({"file": filepath, "libs": sorted(set(hits))})
             urls = REMOTE_URL.findall(txt)
+            # Filter out localhost URLs again for safety
+            urls = [u for u in urls if "localhost" not in u and "127.0.0.1" not in u]
             if urls:
-                report["files_with_remote_urls"].append({
-                    "file": filepath,
-                    "urls": sorted(set(urls))[:10]
-                })
+                report["files_with_remote_urls"].append(
+                    {"file": filepath, "urls": sorted(set(urls))[:10]}
+                )
     return report
 def main():
     ap = argparse.ArgumentParser()
@@ -102,38 +111,31 @@ def main():
         "code_no_network": {},
         "status": "PASS"
     }
-    guards_to_run = [
-        (
-            "llm_guard",
-            [
-                "python3", "scripts/llm_guard.py", "--root", args.root,
-                "--out", "reports/llm_guard_report.json"
-            ],
-        ),
-        (
-            "net_guard",
-            [
-                "python3", "scripts/net_guard.py", "--root", args.root,
-                "--out", "reports/net_guard_report.json"
-            ],
-        ),
-        (
-            "secrets_guard",
-            [
-                "python3",
-                "scripts/secrets_guard.py",
-                "--root",
-                args.root,
-                "--out",
-                "reports/secrets_guard_report.json",
-            ],
-        ),
-    ]
-    for name, cmd in guards_to_run:
-        rc, out = run(cmd)
-        summary["guards"][name] = {"exit_code": rc}
-        if rc != 0:
-            summary["status"] = "FAIL"
+
+    # Run guards explicitly for clarity and ruff compliance
+    rc, _ = run([
+        sys.executable, "scripts/llm_guard.py", "--root", args.root,
+        "--out", "reports/llm_guard_report.json"
+    ])
+    summary["guards"]["llm_guard"] = {"exit_code": rc}
+    if rc != 0:
+        summary["status"] = "FAIL"
+
+    rc, _ = run([
+        sys.executable, "scripts/net_guard.py", "--root", args.root,
+        "--out", "reports/net_guard_report.json"
+    ])
+    summary["guards"]["net_guard"] = {"exit_code": rc}
+    if rc != 0:
+        summary["status"] = "FAIL"
+
+    rc, _ = run([
+        sys.executable, "scripts/secrets_guard.py", "--root", args.root,
+        "--out", "reports/secrets_guard_report.json"
+    ])
+    summary["guards"]["secrets_guard"] = {"exit_code": rc}
+    if rc != 0:
+        summary["status"] = "FAIL"
 
     assets = local_assets()
     summary["shield_local_assets"] = assets

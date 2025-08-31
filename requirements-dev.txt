@@ -3,3 +3,4 @@ black
 bandit
 pytest
 pip-audit
+httpx # For FastAPI TestClient
