@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createForm = document.getElementById('create-form');
     const createGroupIdInput = document.getElementById('create-group-id-input');
     const cancelCreateBtn = document.getElementById('cancel-create-btn');
+    const toastContainer = document.getElementById('toast-container');
 
     const API_BASE_URL = '/api/v1';
 
@@ -36,7 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'deleteModalText': '¿Estás seguro de que quieres eliminar el proyecto "{groupId}"? Esta acción no se puede deshacer.',
             'deleteBtn': 'Eliminar',
             'createModalTitle': 'Crear Nuevo Proyecto',
-            'createBtn': 'Crear'
+            'createBtn': 'Crear',
+            'loadingBtn': 'Cargando...',
+            'createSuccess': "Proyecto '{groupId}' creado.",
+            'renameSuccess': "Proyecto renombrado a '{newGroupId}'.",
+            'deleteSuccess': "Proyecto '{groupId}' eliminado."
         },
         'en': {
             'projectsTitle': 'Projects',
@@ -51,7 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'deleteModalText': 'Are you sure you want to delete the project "{groupId}"? This action cannot be undone.',
             'deleteBtn': 'Delete',
             'createModalTitle': 'Create New Project',
-            'createBtn': 'Create'
+            'createBtn': 'Create',
+            'loadingBtn': 'Loading...',
+            'createSuccess': "Project '{groupId}' created.",
+            'renameSuccess': "Project renamed to '{newGroupId}'.",
+            'deleteSuccess': "Project '{groupId}' deleted."
         }
     };
 
@@ -65,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderGroupList(data.groups);
         } catch (error) {
             console.error('Error al cargar los grupos:', error);
-            groupList.innerHTML = '<li class="loading">Error al cargar proyectos.</li>';
+            showToast('Error al cargar proyectos.', 'error');
         }
     }
 
@@ -141,11 +150,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!groupId) return;
 
         if (!/^[a-zA-Z0-9_-]+$/.test(groupId)) {
-            alert("Nombre de proyecto no válido. Usa solo letras, números, guiones y guiones bajos.");
+            showToast("Nombre de proyecto no válido. Usa solo letras, números, guiones y guiones bajos.", 'error');
             return;
         }
 
         try {
+            setModalLoadingState(createModal, true);
             const response = await fetch(`${API_BASE_URL}/groups`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -156,10 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.detail || `Error: ${response.statusText}`);
             }
             await fetchGroups();
+            const lang = langSelector.value;
+            showToast(I18N[lang].createSuccess.replace('{groupId}', groupId), 'success');
+
         } catch (error) {
             console.error('Error al crear el proyecto:', error);
-            alert(`No se pudo crear el proyecto: ${error.message}`);
+            showToast(`No se pudo crear el proyecto: ${error.message}`, 'error');
         } finally {
+            setModalLoadingState(createModal, false);
             closeCreateModal();
         }
     }
@@ -184,11 +198,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!/^[a-zA-Z0-9_-]+$/.test(newGroupId)) {
-            alert("Nombre de proyecto no válido. Usa solo letras, números, guiones y guiones bajos.");
+            showToast("Nombre de proyecto no válido. Usa solo letras, números, guiones y guiones bajos.", 'error');
             return;
         }
 
         try {
+            setModalLoadingState(renameModal, true);
             const response = await fetch(`${API_BASE_URL}/groups/${oldGroupId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -199,10 +214,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.detail || `Error: ${response.statusText}`);
             }
             await fetchGroups();
+            const lang = langSelector.value;
+            showToast(I18N[lang].renameSuccess.replace('{newGroupId}', newGroupId), 'success');
         } catch (error) {
             console.error(`Error al renombrar el proyecto ${oldGroupId}:`, error);
-            alert(`No se pudo renombrar el proyecto: ${error.message}`);
+            showToast(`No se pudo renombrar el proyecto: ${error.message}`, 'error');
         } finally {
+            setModalLoadingState(renameModal, false);
             closeRenameModal();
         }
     }
@@ -221,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!groupId) return;
 
         try {
+            setModalLoadingState(deleteModal, true);
             const response = await fetch(`${API_BASE_URL}/groups/${groupId}`, { method: 'DELETE' });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -233,10 +252,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 welcomeMessage.classList.remove('hidden');
                 conversationView.classList.add('hidden');
             }
+            const lang = langSelector.value;
+            showToast(I18N[lang].deleteSuccess.replace('{groupId}', groupId), 'success');
         } catch (error) {
             console.error(`Error al eliminar el proyecto ${groupId}:`, error);
-            alert(`No se pudo eliminar el proyecto: ${error.message}`);
+            showToast(`No se pudo eliminar el proyecto: ${error.message}`, 'error');
         } finally {
+            setModalLoadingState(deleteModal, false);
             closeDeleteModal();
         }
     }
@@ -253,6 +275,59 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeRenameModal() {
         renameModal.classList.add('hidden');
         delete renameModal.dataset.oldGroupId;
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const messageSpan = document.createElement('span');
+        messageSpan.textContent = message;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close-btn';
+        closeBtn.innerHTML = '&times;';
+
+        toast.appendChild(messageSpan);
+        toast.appendChild(closeBtn);
+
+        toastContainer.appendChild(toast);
+
+        const removeToast = () => {
+            toast.classList.add('fade-out');
+            toast.addEventListener('animationend', () => toast.remove());
+        };
+
+        const timeoutId = setTimeout(removeToast, 5000);
+
+        closeBtn.addEventListener('click', () => {
+            clearTimeout(timeoutId);
+            removeToast();
+        });
+    }
+
+    function setModalLoadingState(modal, isLoading) {
+        const confirmBtn = modal.querySelector('#confirm-create-btn, #confirm-rename-btn, #confirm-delete-btn');
+        const cancelBtn = modal.querySelector('#cancel-create-btn, #cancel-rename-btn, #cancel-delete-btn');
+
+        if (!confirmBtn || !cancelBtn) return;
+
+        if (isLoading) {
+            confirmBtn.disabled = true;
+            cancelBtn.disabled = true;
+            if (!confirmBtn.dataset.originalText) {
+                confirmBtn.dataset.originalText = confirmBtn.textContent;
+            }
+            const lang = langSelector.value;
+            confirmBtn.textContent = I18N[lang].loadingBtn;
+        } else {
+            confirmBtn.disabled = false;
+            cancelBtn.disabled = false;
+            if (confirmBtn.dataset.originalText) {
+                confirmBtn.textContent = confirmBtn.dataset.originalText;
+                delete confirmBtn.dataset.originalText;
+            }
+        }
     }
 
     function updateUIText(lang) {

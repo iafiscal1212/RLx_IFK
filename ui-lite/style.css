@@ -243,6 +243,11 @@ main {
     cursor: pointer;
 }
 
+.modal-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
 #cancel-rename-btn {
     background-color: #718096;
     color: #e2e8f0;
@@ -261,6 +266,73 @@ main {
 #confirm-create-btn {
     background-color: #4299e1;
     color: #1a202c;
+}
+
+/* Toast Notifications */
+#toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.toast {
+    background-color: #2d3748;
+    color: #e2e8f0;
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    border-left: 4px solid #718096;
+    opacity: 0;
+    transform: translateX(100%);
+    animation: slideIn 0.3s forwards;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.toast.fade-out {
+    animation: fadeOut 0.5s forwards;
+}
+
+.toast.success {
+    border-left-color: #68d391;
+}
+
+.toast.error {
+    border-left-color: #e53e3e;
+}
+
+.toast-close-btn {
+    background: none;
+    border: none;
+    color: #a0aec0;
+    cursor: pointer;
+    font-size: 1.5rem;
+    line-height: 1;
+    padding: 0;
+}
+
+.toast-close-btn:hover {
+    color: #e2e8f0;
+}
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+    }
 }
 }
 }
