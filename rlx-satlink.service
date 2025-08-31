@@ -1,0 +1,21 @@
+[Unit]
+Description=RLx SatLink Bridge (One-shot)
+
+[Service]
+Type=oneshot
+
+# User should be a non-privileged user dedicated to this service
+# User=rlx-satlink
+
+# Ensure the secret is passed securely, not hardcoded
+Environment="RLX_SAT_SECRET=your-production-secret-key"
+
+WorkingDirectory=/path/to/your/RLx_IFK/repo
+
+# This command processes both queues in one run.
+ExecStart=/usr/bin/python3 /path/to/your/RLx_IFK/repo/rlx_sat/bridge.py --send /var/rlx/outbox --recv /var/rlx/inbox --queue /var/rlx/satlink/queue
+
+# Add sandboxing for extra security
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=yes

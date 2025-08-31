@@ -3,17 +3,16 @@
 Purity v2 — incluye verificación de Shield local y sin red en predict/train
 """
 import subprocess, sys, os, json, argparse, pathlib, re, hashlib, datetime
+from .utils import read_file_content
+
 BANNED_NET = ["requests","urllib","urllib3","httpx","aiohttp","websocket","websockets","grpc","paramiko","boto3","paho","pika","kafka","pulsar","ftplib","smtplib","imaplib"]
 REMOTE_URL = re.compile(r"(?i)\b(?:https?|wss?)://(?!127\.0\.0\.1|localhost)[^\s\"'<>\\\{\}\[\]]+")
 REQ = ["data/shield_patterns.yaml"]; OPT = ["data/prompt_fingerprint.model.json"]
-SCAN_DIRS=["predict","train"]
+SCAN_DIRS=["predict","train", "rlx_sat", "tuner", "tools", "i18n", "renderer", "rlx_backend"]
 def run(cmd): p=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True); return p.returncode,p.stdout
 def sha256f(p): import hashlib; h=hashlib.sha256(); f=open(p,"rb");
 for chunk in iter(lambda:f.read(1048576), b""): h.update(chunk)
 return h.hexdigest()
-def read(p):
-    try: return open(p,"r",encoding="utf-8",errors="ignore").read()
-    except: return ""
 def listf(root):
     for dp,_,fn in os.walk(root):
         for f in fn: yield os.path.join(dp,f)
@@ -35,7 +34,7 @@ def no_network_scan():
     for root in [d for d in SCAN_DIRS if os.path.isdir(d)]:
         for p in listf(root):
             if not p.endswith((".py",".rs",".js",".ts",".tsx",".jsx",".sh",".ps1",".yaml",".yml",".json",".md")): continue
-            txt=read(p)
+            txt=read_file_content(p)
             hits=[]
             for lib in BANNED_NET:
                 if re.search(rf'(?m)^\s*(from\s+{re.escape(lib)}\s+import|import\s+{re.escape(lib)}\b)|require\(["\']{re.escape(lib)}["\']\)', txt):
