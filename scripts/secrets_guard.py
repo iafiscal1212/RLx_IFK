@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import sys, os, re, json, argparse, pathlib
+from .utils import read_file_content
+
 EXTS={".py",".rs",".js",".ts",".tsx",".jsx",".json",".yaml",".yml",".toml",".env",".ini",".cfg",".md",".sh",".ps1"}
 API=[
     # Generic keys
@@ -15,9 +17,6 @@ API=[
     r"(sk|pk)_(test|live)_[0-9a-zA-Z]{24}", # Stripe
 ]
 CMD=[r"\bcurl\s", r"\bwget\s", r"\biwr\s", r"\binvoke-webrequest\b", r"\bnc\s", r"\bncat\s"]
-def read(p):
-    try: return open(p,"r",encoding="utf-8",errors="ignore").read()
-    except: return ""
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("--root",default="."); ap.add_argument("--out",default="reports/secrets_guard_report.json"); args=ap.parse_args()
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
@@ -31,7 +30,7 @@ def main():
             p=os.path.join(dp,f)
             # Skip self-scanning
             if os.path.realpath(p) == script_path: continue
-            txt=read(p); rel=os.path.relpath(p,args.root)
+            txt=read_file_content(p); rel=os.path.relpath(p,args.root)
             for pat in API:
                 if re.search(pat, txt, flags=re.IGNORECASE): api.append({"file":rel,"pattern":pat}); break
             for pat in CMD:
