@@ -82,8 +82,9 @@ jobs:
       - name: Disallow cloud LLM libs in code
         run: |
           set -e
-          hits=$(rg -n --hidden --glob '!**/.venv/**' \
-            'import (openai|transformers|anthropic|cohere|vertexai|google\.generativeai)|from (openai|transformers) ' \
+          # This pattern is based on the ZTL contract (§2.1)
+          hits=$(rg -n -i --hidden --glob '!**/.venv/**' --glob '*.py' \
+            'import (openai|anthropic|cohere|vertexai|google\.generativeai|transformers|vllm|llama_cpp|gguf|gptq|exllama)|from (openai|transformers)' \
             || true)
           if [ -n "$hits" ]; then
             echo "::error::Disallowed cloud libs detected:\n$hits"; exit 1; fi
@@ -253,7 +254,7 @@ Total 3 (delta 1), reusados 0 (delta 0), pack-reusados 0
 remote: Resolving deltas: 100% (1/1), completed with 1 local object.
 To github.com:iafiscal1212/RLx_IFK.git
    6d5034c..4e6babb  main -> main
-caresment@Cares:~/RLX_IFK$ 
+caresment@Cares:~/RLX_IFK$
   siii, todo lo que me lo mejore y lo haga super seguro mejor, no escatimemos en nada
 ChatGPT Plus
 Pensó durante 1m 1s

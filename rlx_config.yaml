@@ -1,0 +1,17 @@
+runtime:
+  egress: false
+  device: cpu
+  threads: 2
+  quant: int8
+  batch_size: 1
+  idle_sleep_ms: 150
+limits:
+  max_params: 10000000
+  cpu_p95: 0.10
+  ram_mb: 512
+ui:
+  theme: dark
+  hotkeys: true
+shield:
+  enabled: true
+  threshold: 0.8
