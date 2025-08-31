@@ -89,6 +89,7 @@ class DailySummaryRecord(BaseModel):
 class GroupInfo(BaseModel):
     group_id: str
     last_modified: datetime
+    has_recent_alerts: bool = Field(False, description="Indica si el grupo tiene alertas no vistas o recientes.")
 
 class GroupListResponse(BaseModel):
     groups: list[GroupInfo]
@@ -97,6 +98,7 @@ class GroupListResponse(BaseModel):
 
 class CreateGroupRequest(BaseModel):
     group_id: str = Field(..., description="El ID del nuevo grupo a crear. Debe ser alfanumérico con guiones/guiones bajos.")
+    template: str | None = Field(None, description="Plantilla opcional para inicializar el grupo (ej. 'scientific', 'business').")
 
 # --- Modelo para renombrar un grupo ---
 

@@ -29,6 +29,9 @@
     <main>
         <div class="sidebar">
             <h2 data-i18n-key="projectsTitle">Proyectos</h2>
+            <div class="search-wrapper">
+                <input type="search" id="group-search-input" data-i18n-placeholder="searchProjectPlaceholder" autocomplete="off">
+            </div>
             <ul id="group-list">
                 <!-- Los grupos se cargarán aquí dinámicamente -->
                 <li class="loading">Cargando proyectos...</li>
@@ -86,6 +89,16 @@
             <h3 data-i18n-key="createModalTitle">Nuevo Proyecto</h3>
             <form id="create-form">
                 <input type="text" id="create-group-id-input" required autocomplete="off" placeholder="nombre-del-proyecto">
+                <div class="form-group">
+                    <label for="create-group-template-select" data-i18n-key="templateLabel">Plantilla:</label>
+                    <select id="create-group-template-select">
+                        <option value="" data-i18n-key="templateNone">Ninguna (vacío)</option>
+                        <option value="scientific" data-i18n-key="templateScientific">Científico</option>
+                        <option value="business" data-i18n-key="templateBusiness">Empresarial</option>
+                        <option value="creative" data-i18n-key="templateCreative">Creativo</option>
+                        <option value="strategic" data-i18n-key="templateStrategic">Estratégico</option>
+                    </select>
+                </div>
                 <div class="modal-actions">
                     <button type="button" id="cancel-create-btn" data-i18n-key="cancelBtn">Cancelar</button>
                     <button type="submit" id="confirm-create-btn" data-i18n-key="createBtn">Crear</button>

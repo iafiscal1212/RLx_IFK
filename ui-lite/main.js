@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createGroupBtn = document.querySelector('.create-group-btn');
     const statusIndicator = document.querySelector('.status-indicator');
     const themeSwitch = document.getElementById('theme-switch-checkbox');
+    const groupSearchInput = document.getElementById('group-search-input');
     const langSelector = document.getElementById('lang-selector');
     // Elementos del modal de renombrar
     const renameModal = document.getElementById('rename-modal');
@@ -41,11 +42,23 @@ document.addEventListener('DOMContentLoaded', () => {
             'createModalTitle': 'Crear Nuevo Proyecto',
             'createBtn': 'Crear',
             'loadingBtn': 'Cargando...',
+            'searchProjectPlaceholder': 'Buscar proyecto...',
+            'noProjects': 'No hay proyectos.',
             'messagePlaceholder': 'Escribe un mensaje...',
             'sendBtn': 'Enviar',
             'summaryTopics': 'Temas',
             'summaryDecisions': 'Decisiones',
             'summaryActions': 'Acciones',
+            'copySummaryTitle': 'Copiar resumen al portapapeles',
+            'copySuccess': 'Resumen copiado.',
+            'arousalSpikeToast': '¡Atención! Nivel de energía elevado detectado.',
+            'suggestionToast': 'RLx tiene una nueva sugerencia para el grupo.',
+            'templateLabel': 'Plantilla inicial',
+            'templateNone': 'Ninguna (vacío)',
+            'templateScientific': 'Científico',
+            'templateBusiness': 'Empresarial',
+            'templateCreative': 'Creativo',
+            'templateStrategic': 'Estratégico',
             'createSuccess': "Proyecto '{groupId}' creado.",
             'renameSuccess': "Proyecto renombrado a '{newGroupId}'.",
             'deleteSuccess': "Proyecto '{groupId}' eliminado."
@@ -65,11 +78,23 @@ document.addEventListener('DOMContentLoaded', () => {
             'createModalTitle': 'Create New Project',
             'createBtn': 'Create',
             'loadingBtn': 'Loading...',
+            'searchProjectPlaceholder': 'Search project...',
+            'noProjects': 'No projects.',
             'messagePlaceholder': 'Write a message...',
             'sendBtn': 'Send',
             'summaryTopics': 'Topics',
             'summaryDecisions': 'Decisions',
             'summaryActions': 'Actions',
+            'copySummaryTitle': 'Copy summary to clipboard',
+            'copySuccess': 'Summary copied.',
+            'arousalSpikeToast': 'Attention! Elevated energy level detected.',
+            'suggestionToast': 'RLx has a new suggestion for the group.',
+            'templateLabel': 'Initial Template',
+            'templateNone': 'None (empty)',
+            'templateScientific': 'Scientific',
+            'templateBusiness': 'Business',
+            'templateCreative': 'Creative',
+            'templateStrategic': 'Strategic',
             'createSuccess': "Project '{groupId}' created.",
             'renameSuccess': "Project renamed to '{newGroupId}'.",
             'deleteSuccess': "Project '{groupId}' deleted."
@@ -92,20 +117,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderGroupList(groups) {
         if (!groups || groups.length === 0) {
-            groupList.innerHTML = '<li class="loading">No hay proyectos.</li>';
+            const lang = langSelector.value;
+            groupList.innerHTML = `<li class="loading">${I18N[lang].noProjects}</li>`;
             return;
         }
 
         groupList.innerHTML = ''; // Limpiar la lista
         groups.forEach(group => {
             const li = document.createElement('li');
-            li.textContent = group.group_id;
             li.dataset.groupId = group.group_id;
             li.title = `Última actividad: ${new Date(group.last_modified).toLocaleString()}`;
 
+            if (group.has_recent_alerts) {
+                li.classList.add('has-alert');
+            }
+
+            const alertIndicator = document.createElement('span');
+            alertIndicator.className = 'alert-indicator';
+            alertIndicator.title = 'Este proyecto tiene alertas recientes.';
+
             const groupNameSpan = document.createElement('span');
             groupNameSpan.textContent = group.group_id;
-            groupNameSpan.style.flexGrow = '1';
+
+            const groupNameWrapper = document.createElement('div');
+            groupNameWrapper.className = 'group-name-wrapper';
 
             const renameBtn = document.createElement('button');
             renameBtn.className = 'rename-btn';
@@ -133,7 +168,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Cargar la conversación (lógica futura)
                 loadConversation(group.group_id, langSelector.value);
             });
-            li.appendChild(groupNameSpan); // Contenedor para el nombre
+
+            groupNameWrapper.appendChild(alertIndicator);
+            groupNameWrapper.appendChild(groupNameSpan);
+            li.appendChild(groupNameWrapper);
             li.appendChild(renameBtn); // Botón de renombrar
             li.appendChild(deleteBtn);
             groupList.appendChild(li);
@@ -146,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
             welcomeMessage.classList.add('hidden');
             conversationView.classList.remove('hidden');
             conversationView.dataset.currentGroupId = groupId;
+            document.title = `RLx - ${groupId}`;
             conversationView.querySelector('#log-container').innerHTML = `<p class="loading">${I18N[lang].loadingBtn}</p>`;
 
             const response = await fetch(`${API_BASE_URL}/groups/${groupId}/state`);
@@ -153,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`Error al cargar el estado del grupo: ${response.statusText}`);
             }
             const state = await response.json();
+            checkForNewNotifications(state.log || [], lang);
             renderLog(state.log || [], lang);
 
             // Adjuntar el evento al formulario de mensajes
@@ -226,6 +266,24 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'daily_summary':
                 header.innerHTML = `<span class="log-item__icon">📋</span><strong>Resumen Diario</strong>`;
                 header.appendChild(timestamp);
+
+                // --- Añadir botón de copiar ---
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-summary-btn';
+                copyBtn.innerHTML = '📄'; // Icono de documento
+                copyBtn.title = I18N[lang].copySummaryTitle;
+                copyBtn.addEventListener('click', () => {
+                    const summaryText = generateSummaryText(record.details, lang, record.ts);
+                    navigator.clipboard.writeText(summaryText).then(() => {
+                        showToast(I18N[lang].copySuccess, 'success');
+                    }).catch(err => {
+                        console.error('Error al copiar el resumen:', err);
+                        showToast('No se pudo copiar el resumen.', 'error');
+                    });
+                });
+                header.appendChild(copyBtn);
+                // --- Fin del botón de copiar ---
+
                 item.appendChild(header);
                 item.appendChild(createSummarySection(I18N[lang].summaryTopics, record.details.topics, lang));
                 item.appendChild(createSummarySection(I18N[lang].summaryDecisions, record.details.decisions, lang));
@@ -264,6 +322,61 @@ document.addEventListener('DOMContentLoaded', () => {
         return section;
     }
 
+    function generateSummaryText(details, lang, timestamp) {
+        const i18n = I18N[lang];
+        const dateStr = new Date(timestamp).toLocaleDateString();
+        let text = `Resumen Diario (${dateStr})\n`;
+        text += '----------------------------------\n\n';
+
+        if (details.topics && details.topics.length > 0) {
+            text += `${i18n.summaryTopics}:\n`;
+            details.topics.forEach(topic => {
+                text += `- ${topic}\n`;
+            });
+            text += '\n';
+        }
+
+        if (details.decisions && details.decisions.length > 0) {
+            text += `${i18n.summaryDecisions}:\n`;
+            details.decisions.forEach(decision => {
+                text += `- ${decision}\n`;
+            });
+            text += '\n';
+        }
+
+        if (details.actions && details.actions.length > 0) {
+            text += `${i18n.summaryActions}:\n`;
+            details.actions.forEach(action => {
+                text += `- ${action.assignee}: ${action.task}\n`;
+            });
+            text += '\n';
+        }
+
+        return text.trim();
+    }
+
+    function checkForNewNotifications(log, lang) {
+        if (!log || log.length === 0) return;
+
+        const lastRecord = log[log.length - 1];
+        const recordTime = new Date(lastRecord.ts);
+        const now = new Date();
+        const timeDiffSeconds = (now - recordTime) / 1000;
+
+        // Solo mostrar toast para registros muy recientes para evitar re-notificar en cada carga.
+        if (timeDiffSeconds > 5) {
+            return;
+        }
+
+        const i18n = I18N[lang];
+        if (lastRecord.type === 'alert' && lastRecord.alert_type === 'arousal_spike_detected') {
+            showToast(i18n.arousalSpikeToast, 'warning');
+        } else if (lastRecord.type === 'suggestion') {
+            // Usar un tipo 'info' para sugerencias
+            showToast(i18n.suggestionToast, 'info');
+        }
+    }
+
     function createGroup() {
         // Muestra el modal de creación
         createGroupIdInput.value = '';
@@ -299,6 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleCreateSubmit(event) {
         event.preventDefault();
         const groupId = createGroupIdInput.value.trim();
+        const templateSelect = document.getElementById('create-group-template-select');
+        const template = templateSelect.value;
 
         if (!groupId) return;
 
@@ -309,16 +424,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             setModalLoadingState(createModal, true);
+            const payload = { group_id: groupId };
+            if (template) {
+                payload.template = template;
+            }
             const response = await fetch(`${API_BASE_URL}/groups`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ group_id: groupId }),
+                body: JSON.stringify(payload),
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.detail || `Error: ${response.statusText}`);
             }
             await fetchGroups();
+
+            // Seleccionar automáticamente el nuevo proyecto simulando un clic
+            const newGroupItem = document.querySelector(`#group-list li[data-group-id="${groupId}"]`);
+            if (newGroupItem) {
+                newGroupItem.click();
+            }
+
             const lang = langSelector.value;
             showToast(I18N[lang].createSuccess.replace('{groupId}', groupId), 'success');
 
@@ -404,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (activeItem && activeItem.dataset.groupId === groupId) {
                 welcomeMessage.classList.remove('hidden');
                 conversationView.classList.add('hidden');
+                document.title = 'RLx - Panel de Control';
             }
             const lang = langSelector.value;
             showToast(I18N[lang].deleteSuccess.replace('{groupId}', groupId), 'success');
@@ -432,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showToast(message, type = 'success') {
         const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
+        toast.className = `toast ${type.toLowerCase()}`;
 
         const messageSpan = document.createElement('span');
         messageSpan.textContent = message;
@@ -542,9 +669,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function handleGroupSearch() {
+        const searchTerm = groupSearchInput.value.toLowerCase();
+        const groupItems = groupList.querySelectorAll('li');
+
+        groupItems.forEach(item => {
+            // Only filter items that are actual groups (have a data-group-id)
+            if (item.dataset.groupId) {
+                const groupId = item.dataset.groupId.toLowerCase();
+                const isVisible = groupId.includes(searchTerm);
+                // The default display is 'flex' from the stylesheet
+                item.style.display = isVisible ? 'flex' : 'none';
+            }
+        });
+    }
+
     createGroupBtn.addEventListener('click', createGroup);
     langSelector.addEventListener('change', handleLangChange);
     themeSwitch.addEventListener('change', handleThemeChange);
+
+    // Evento para el campo de búsqueda
+    groupSearchInput.addEventListener('input', handleGroupSearch);
 
     // Eventos del modal de renombrar
     renameForm.addEventListener('submit', handleRenameSubmit);

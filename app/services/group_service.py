@@ -28,6 +28,10 @@ MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 PROFILES_DIR = Path("profiles")
 PROFILES_DIR.mkdir(exist_ok=True)
 
+# Directorio de plantillas
+TEMPLATES_DIR = Path("templates")
+TEMPLATES_DIR.mkdir(exist_ok=True)
+
 @lru_cache(maxsize=16)
 def _load_group_profile(group_id: str) -> dict:
     """Carga el perfil completo de un grupo desde profiles/groups.yaml."""
@@ -52,21 +56,37 @@ def get_group_memory_path(group_id: str) -> Path:
     validate_group_id(group_id)
     return MEMORY_DIR / f"{group_id}.yaml"
 
-def create_group(group_id: str) -> Path:
+def create_group(group_id: str, template: str | None = None) -> Path:
     """
     Crea un nuevo fichero de memoria para un grupo si no existe.
+    Aplica una plantilla si se especifica.
     Devuelve la ruta al fichero creado.
     """
     filepath = get_group_memory_path(group_id)
     if filepath.exists():
         raise FileExistsError(f"El proyecto '{group_id}' ya existe.")
 
-    # Crear el fichero con un estado inicial mínimo
-    initial_state = {
-        "meta": {"group_id": group_id, "created": datetime.utcnow().isoformat()},
-        "log": [],
-        "user_stats": {}
-    }
+    # Cargar estado inicial desde una plantilla si se proporciona
+    if template:
+        templates_file = TEMPLATES_DIR / "group_templates.yaml"
+        try:
+            if templates_file.exists():
+                with open(templates_file, "r", encoding="utf-8") as f:
+                    all_templates = yaml.safe_load(f) or {}
+                initial_state = all_templates.get(template, {}).copy() # Usar una copia
+            else:
+                initial_state = {}
+        except (IOError, yaml.YAMLError):
+            initial_state = {}
+    else:
+        initial_state = {}
+
+    # Asegurar que la estructura base está presente y los metadatos son correctos
+    initial_state.setdefault("meta", {})["group_id"] = group_id
+    initial_state.setdefault("meta", {})["created"] = datetime.utcnow().isoformat()
+    initial_state.setdefault("log", [])
+    initial_state.setdefault("user_stats", {})
+
     try:
         with open(filepath, "w", encoding="utf-8") as f:
             yaml.dump(initial_state, f, default_flow_style=False, allow_unicode=True)
@@ -280,6 +300,29 @@ def get_affective_history(group_id: str, since_hours: int = 24) -> dict:
             continue
 
     return {"history": history_points}
+
+def has_recent_alerts(group_id: str, since_hours: int = 24) -> bool:
+    """
+    Comprueba si un grupo tiene alertas en las últimas 'since_hours'.
+    Es una comprobación simple y sin estado, ideal para la UI.
+    """
+    state = get_group_state(group_id)
+    if not state or "log" not in state:
+        return False
+
+    since_ts = datetime.utcnow() - timedelta(hours=since_hours)
+
+    # Iterar desde el final es más eficiente si los logs son grandes.
+    for record in reversed(state.get("log", [])):
+        try:
+            ts = datetime.fromisoformat(record.get("ts", "")).replace(tzinfo=None)
+            if ts < since_ts:
+                return False # Hemos salido de la ventana de tiempo
+            if record.get("type") == "alert":
+                return True # Encontramos una alerta reciente
+        except (ValueError, TypeError):
+            continue
+    return False
 
 def check_and_suggest_pause(group_id: str, state: dict):
     """

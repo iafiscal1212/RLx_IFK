@@ -30,7 +30,8 @@ def list_groups():
     groups_info = [
         schemas.GroupInfo(
             group_id=p.stem,
-            last_modified=datetime.fromtimestamp(p.stat().st_mtime)
+            last_modified=datetime.fromtimestamp(p.stat().st_mtime),
+            has_recent_alerts=group_service.has_recent_alerts(p.stem)
         ) for p in group_files
     ]
     return {"groups": groups_info}
@@ -41,6 +42,7 @@ def create_new_group(group_data: schemas.CreateGroupRequest):
     Crea un nuevo grupo (proyecto).
     """
     group_id = group_data.group_id
+    template = group_data.template
     # Validación estricta del nombre en la capa de API
     if not re.match(r"^[a-zA-Z0-9_-]+$", group_id):
         raise HTTPException(
@@ -49,7 +51,7 @@ def create_new_group(group_data: schemas.CreateGroupRequest):
         )
 
     try:
-        filepath = group_service.create_group(group_id)
+        filepath = group_service.create_group(group_id, template=template)
         return schemas.GroupInfo(
             group_id=group_id,
             last_modified=datetime.fromtimestamp(filepath.stat().st_mtime)
