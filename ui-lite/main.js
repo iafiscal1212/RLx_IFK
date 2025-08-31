@@ -33,6 +33,19 @@ document.addEventListener('DOMContentLoaded', () => {
             li.dataset.groupId = group.group_id;
             li.title = `Última actividad: ${new Date(group.last_modified).toLocaleString()}`;
 
+            const groupNameSpan = document.createElement('span');
+            groupNameSpan.textContent = group.group_id;
+            groupNameSpan.style.flexGrow = '1';
+
+            const renameBtn = document.createElement('button');
+            renameBtn.className = 'rename-btn';
+            renameBtn.innerHTML = '✏️'; // Pencil emoji
+            renameBtn.title = `Renombrar proyecto ${group.group_id}`;
+            renameBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                renameGroup(group.group_id);
+            });
+
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.innerHTML = '&times;'; // 'x' symbol
@@ -50,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Cargar la conversación (lógica futura)
                 loadConversation(group.group_id);
             });
+            li.appendChild(groupNameSpan);
+            li.appendChild(renameBtn);
             li.appendChild(deleteBtn);
             groupList.appendChild(li);
         });
@@ -94,6 +109,40 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error al crear el proyecto:', error);
             alert(`No se pudo crear el proyecto: ${error.message}`);
+        }
+    }
+
+    async function renameGroup(oldGroupId) {
+        const newGroupId = prompt(`Introduce el nuevo nombre para el proyecto "${oldGroupId}":`, oldGroupId);
+
+        if (!newGroupId || newGroupId === oldGroupId) {
+            return; // El usuario canceló o no cambió el nombre
+        }
+
+        if (!/^[a-zA-Z0-9_-]+$/.test(newGroupId)) {
+            alert("Nombre de proyecto no válido. Usa solo letras, números, guiones y guiones bajos.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/groups/${oldGroupId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_group_id: newGroupId }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `Error: ${response.statusText}`);
+            }
+
+            // Éxito: refrescar la lista para mostrar el proyecto renombrado
+            await fetchGroups();
+            // Opcional: seleccionar automáticamente el proyecto renombrado
+
+        } catch (error) {
+            console.error(`Error al renombrar el proyecto ${oldGroupId}:`, error);
+            alert(`No se pudo renombrar el proyecto: ${error.message}`);
         }
     }
 

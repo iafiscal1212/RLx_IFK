@@ -61,6 +61,27 @@ def create_new_group(group_data: schemas.CreateGroupRequest):
     except IOError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+@router.put("/{group_id}", status_code=status.HTTP_200_OK, response_model=schemas.GroupInfo)
+def rename_group(group_id: str, rename_data: schemas.RenameGroupRequest):
+    """
+    Renombra un grupo (proyecto).
+    """
+    new_group_id = rename_data.new_group_id
+    if not re.match(r"^[a-zA-Z0-9_-]+$", new_group_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El nuevo ID del proyecto solo puede contener letras, números, guiones y guiones bajos."
+        )
+
+    try:
+        group_service.rename_group(group_id, new_group_id)
+        new_filepath = group_service.get_group_memory_path(new_group_id)
+        return schemas.GroupInfo(group_id=new_group_id, last_modified=datetime.fromtimestamp(new_filepath.stat().st_mtime))
+    except (FileNotFoundError, FileExistsError, ValueError, IOError) as e:
+        # Asignar códigos de estado HTTP apropiados
+        status_code = 404 if isinstance(e, FileNotFoundError) else 409 if isinstance(e, FileExistsError) else 400
+        raise HTTPException(status_code=status_code, detail=str(e))
+
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_group(group_id: str):
     """

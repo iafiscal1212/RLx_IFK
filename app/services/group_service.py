@@ -92,6 +92,39 @@ def delete_group(group_id: str):
     except IOError as e:
         raise IOError(f"No se pudo eliminar el fichero del proyecto: {e}") from e
 
+def rename_group(old_group_id: str, new_group_id: str):
+    """
+    Renombra un proyecto de forma segura, moviendo el fichero de memoria
+    y actualizando su contenido interno.
+    """
+    old_filepath = get_group_memory_path(old_group_id)
+    new_filepath = get_group_memory_path(new_group_id)
+    old_lock_path = old_filepath.with_suffix(".yaml.lock")
+
+    if not old_filepath.exists():
+        raise FileNotFoundError(f"El proyecto original '{old_group_id}' no existe.")
+    if new_filepath.exists():
+        raise FileExistsError(f"Ya existe un proyecto con el nombre '{new_group_id}'.")
+
+    try:
+        with FileLock(old_lock_path, timeout=5):
+            # Leer el contenido, actualizar el metadato y escribir en el nuevo fichero
+            with open(old_filepath, "r", encoding="utf-8") as f:
+                state = yaml.safe_load(f) or {}
+
+            state.setdefault("meta", {})["group_id"] = new_group_id
+
+            with open(new_filepath, "w", encoding="utf-8") as f:
+                yaml.dump(state, f, default_flow_style=False, allow_unicode=True)
+
+            # Si la escritura fue exitosa, eliminar el fichero antiguo
+            old_filepath.unlink()
+
+    except Timeout:
+        raise IOError(f"No se pudo bloquear el proyecto '{old_group_id}' para renombrarlo.")
+    except (IOError, yaml.YAMLError) as e:
+        raise IOError(f"Error de E/S al renombrar el proyecto: {e}") from e
+
 def persist_message(group_id: str, message: schemas.MessageIngest):
     """
     Añade un mensaje al log de un grupo en su fichero YAML.

@@ -95,6 +95,23 @@ main {
     cursor: default;
 }
 
+.rename-btn {
+    background: none;
+    border: none;
+    color: #a0aec0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0 0.5rem;
+    display: none; /* Oculto por defecto */
+    line-height: 1;
+}
+
+#group-list li:hover .rename-btn {
+    display: block; /* Mostrar en hover */
+}
+
+.rename-btn:hover { color: #63b3ed; }
+
 .delete-btn {
     background: none;
     border: none;

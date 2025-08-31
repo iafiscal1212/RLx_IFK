@@ -96,3 +96,8 @@ class GroupListResponse(BaseModel):
 
 class CreateGroupRequest(BaseModel):
     group_id: str = Field(..., description="El ID del nuevo grupo a crear. Debe ser alfanumérico con guiones/guiones bajos.")
+
+# --- Modelo para renombrar un grupo ---
+
+class RenameGroupRequest(BaseModel):
+    new_group_id: str = Field(..., description="El nuevo ID para el proyecto.")
