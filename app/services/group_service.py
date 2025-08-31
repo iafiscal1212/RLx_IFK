@@ -29,7 +29,6 @@ PROFILES_DIR = Path("profiles")
 PROFILES_DIR.mkdir(exist_ok=True)
 
 @lru_cache(maxsize=16)
-
 def _load_group_profile(group_id: str) -> dict:
     """Carga el perfil completo de un grupo desde profiles/groups.yaml."""
     profiles_path = PROFILES_DIR / "groups.yaml"

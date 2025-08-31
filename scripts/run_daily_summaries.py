@@ -78,6 +78,7 @@ def process_group(group_id: str):
 
             profile = _load_group_profile(group_id)
             user_names = profile.get("users", [])
+            lang = profile.get("default_lang", "es") # Usa 'es' como fallback
 
             logging.info(f"[{group_id}] Generando resumen diario...")
 
@@ -92,7 +93,7 @@ def process_group(group_id: str):
                 logging.info(f"[{group_id}] No hay logs recientes para resumir. Saltando.")
                 return
 
-            summary_details_data = summarizer.generate_daily_summary(recent_logs, user_names=user_names)
+            summary_details_data = summarizer.generate_daily_summary(recent_logs, lang=lang, user_names=user_names)
             summary_details = schemas.DailySummaryDetails(**summary_details_data)
             summary_record = schemas.DailySummaryRecord(details=summary_details)
 
