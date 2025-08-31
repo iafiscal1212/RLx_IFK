@@ -31,10 +31,12 @@ def main():
 
     for dp, _, fn in os.walk(args.root):
         for f in fn:
-            if pathlib.Path(f).suffix.lower() not in EXTS: continue
+            if pathlib.Path(f).suffix.lower() not in EXTS:
+                continue
             p = os.path.join(dp, f)
             # Skip self-scanning
-            if os.path.realpath(p) == script_path: continue
+            if os.path.realpath(p) == script_path:
+                continue
             txt = read_file_content(p)
             rel = os.path.relpath(p, args.root)
             for pat in API:
@@ -46,7 +48,12 @@ def main():
                     cmd.append({"file": rel, "pattern": pat})
                     break
     with open(args.out, "w", encoding="utf-8") as f:
-        json.dump({"api_markers": api, "cmd_suspects": cmd}, f, indent=2, ensure_ascii=False)
+        json.dump(
+            {"api_markers": api, "cmd_suspects": cmd},
+            f,
+            indent=2,
+            ensure_ascii=False
+        )
     if api or cmd:
         print("[WARN] Secrets guard")
         sys.exit(4)
