@@ -1,0 +1,13 @@
+name: RLx Purity
+on: [push, pull_request]
+jobs:
+  purity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: python3 scripts/llm_guard.py --root .
+      - run: python3 scripts/net_guard.py --root .
+      - run: python3 scripts/secrets_guard.py --root .
+      - run: python3 scripts/purity_check.py --root .
