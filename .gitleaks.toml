@@ -1,0 +1,8 @@
+# Gitleaks configuration for RLx project
+title = "Gitleaks config for RLx"
+
+[allowlist]
+description = "Allowlist for files that contain patterns that look like secrets but are not."
+paths = [
+    '''scripts/secrets_guard.py''',
+]

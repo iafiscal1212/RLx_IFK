@@ -8,8 +8,9 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: |
-          python -m pip install -U pip
-          pip install ruff black bandit pytest pip-audit
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
       - name: Ruff
         run: ruff check .
       - name: Black (check)
@@ -19,4 +20,4 @@ jobs:
       - name: Tests
         run: pytest -q || true
       - name: pip-audit
-        run: pip-audit -r local_bundle/dist/requirements.freeze.txt || true
+        run: pip-audit -r requirements.txt || true
