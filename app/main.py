@@ -1,39 +1,32 @@
-from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
-
+from fastapi import FastAPI, APIRouter
 from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
+from .api import groups, files
+from .models import schemas
 
-from .api.endpoints import router as system_router
-from .api.groups import router as groups_router
-
-try:
-    from .api.chat_endpoints import router as chat_router
-except Exception:
-    chat_router = None
-
-try:
-    from .api.i18n_endpoints import router as i18n_router
-except Exception:
-    i18n_router = None
-
+# --- Creación de la aplicación principal ---
 app = FastAPI(
-    docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json",
-    title="RLx API",
-    version="2.1.0",
-    description="RLx — IA compañera de grupos (100% offline, sin tokens)"
+    title="RLx IFK Core",
+    description="Núcleo local y sin conexión para la IA compañera de grupos RLx.",
+    version="1.0.0"
 )
 
-@app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse(url="/index.html")
+# --- Router para la API v1 ---
+# Agrupamos todos los endpoints de la API bajo /api/v1
+api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(groups.router)
+api_router.include_router(files.router)
 
-app.include_router(system_router, prefix="/api/v1")
-app.include_router(groups_router, prefix="/api/v1")
-if chat_router:
-    app.include_router(chat_router, prefix="/api/v1")
-if i18n_router:
-    app.include_router(i18n_router, prefix="/api/v1")
+@api_router.get("/health", response_model=schemas.Health, tags=["health"])
+def health_check():
+    """Comprueba que el servicio está en línea."""
+    return {"status": "ok", "message": "RLx service is running."}
 
-# UI-Lite en raíz (ZTL, estática)
-app.mount("/", StaticFiles(directory="ui-lite", html=True), name="ui")
+app.include_router(api_router)
+
+# --- Servir la Interfaz de Usuario (Frontend) ---
+# Esto es crucial: monta el directorio 'ui-lite' en la raíz.
+# `html=True` permite que `index.html` se sirva para rutas como '/'.
+ui_path = Path(__file__).parent.parent / "ui-lite"
+app.mount("/", StaticFiles(directory=ui_path, html=True), name="ui")

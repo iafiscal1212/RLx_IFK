@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchGroups() {
         try {
-            const response = await fetch(`${API_BASE_URL}/groups`);
+            const response = await fetch(`${API_BASE_URL}/groups/`);
             if (!response.ok) {
                 throw new Error(`Error en la red: ${response.statusText}`);
             }
@@ -493,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (template) {
                 payload.template = template;
             }
-            const response = await fetch(`${API_BASE_URL}/groups`, {
+            const response = await fetch(`${API_BASE_URL}/groups/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
