@@ -1,32 +1,38 @@
 from fastapi import FastAPI, APIRouter
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from pathlib import Path
 
-from .api import groups, files
-from .models import schemas
+# Activa guard de No-Net en runtime (prohíbe conexiones salientes)
+try:
+    import scripts.no_net_runtime  # noqa: F401
+except Exception:  # dura lex
+    pass
 
-# --- Creación de la aplicación principal ---
-app = FastAPI(
-    title="RLx IFK Core",
-    description="Núcleo local y sin conexión para la IA compañera de grupos RLx.",
-    version="1.0.0"
+from app.api.groups import router as groups_router  # noqa: E402
+
+app = FastAPI(title="RLx API", version="1.0.0", docs_url="/docs", openapi_url="/openapi.json")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# --- Router para la API v1 ---
-# Agrupamos todos los endpoints de la API bajo /api/v1
-api_router = APIRouter(prefix="/api/v1")
-api_router.include_router(groups.router)
-api_router.include_router(files.router)
 
-@api_router.get("/health", response_model=schemas.Health, tags=["health"])
-def health_check():
-    """Comprueba que el servicio está en línea."""
-    return {"status": "ok", "message": "RLx service is running."}
+@app.get("/healthz", response_class=PlainTextResponse)
+async def healthz() -> str:
+    return "ok"
 
-app.include_router(api_router)
 
-# --- Servir la Interfaz de Usuario (Frontend) ---
-# Esto es crucial: monta el directorio 'ui-lite' en la raíz.
-# `html=True` permite que `index.html` se sirva para rutas como '/'.
-ui_path = Path(__file__).parent.parent / "ui-lite"
-app.mount("/", StaticFiles(directory=ui_path, html=True), name="ui")
+# API
+app.include_router(groups_router, prefix="/api/v1")
+
+# Serve UI-Lite si existe
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+ui_dir = Path(__file__).resolve().parents[1] / "ui-lite"
+if ui_dir.exists():
+    app.mount("/", StaticFiles(directory=str(ui_dir), html=True), name="ui")

@@ -1,142 +1,69 @@
-from fastapi import APIRouter, Body, HTTPException, status, Depends, Query
-from pathlib import Path
-from datetime import datetime
-import re
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 
-from ..models import schemas
-from ..services import group_service
-from ..core.utils import validate_group_id
-
-router = APIRouter(
-    prefix="/groups",
-    tags=["groups"],
+from app.core.utils import validate_group_id
+from app.services.group_service import (
+    ensure_group,
+    append_message,
+    get_group_state,
 )
+from app.core.policies import get_threshold_z
 
-@router.get("/", response_model=schemas.GroupListResponse)
-def list_groups():
-    """
-    Lista todos los grupos (proyectos) disponibles, ordenados por modificación reciente.
-    """
-    groups_dir = group_service.MEMORY_DIR
-    if not groups_dir.exists():
-        return {"groups": []}
+router = APIRouter(prefix="/groups", tags=["groups"])
 
-    group_files = sorted(
-        groups_dir.glob("*.yaml"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True
-    )
 
-    groups_info = [
-        schemas.GroupInfo(
-            group_id=p.stem,
-            last_modified=datetime.fromtimestamp(p.stat().st_mtime),
-            has_recent_alerts=group_service.has_recent_alerts(p.stem)
-        ) for p in group_files
-    ]
-    return {"groups": groups_info}
+class IngestIn(BaseModel):
+    author: str = Field(..., min_length=1, max_length=40)
+    text: str = Field(..., min_length=1, max_length=4000)
+    timestamp: Optional[str] = None  # ISO8601 opcional
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.GroupInfo)
-def create_new_group(group_data: schemas.CreateGroupRequest):
-    """
-    Crea un nuevo grupo (proyecto).
-    """
-    group_id = group_data.group_id
-    template = group_data.template
-    # Validación estricta del nombre en la capa de API
-    if not re.match(r"^[a-zA-Z0-9_-]+$", group_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El ID del proyecto solo puede contener letras, números, guiones y guiones bajos."
+
+@router.post("/{group_id}/ingest")
+async def ingest(group_id: str, body: IngestIn) -> Dict[str, Any]:
+    gid = validate_group_id(group_id)
+    ensure_group(gid)
+    s = append_message(gid, author=body.author, text=body.text, timestamp=body.timestamp)
+    return {
+        "ok": True,
+        "group_id": gid,
+        "arousal_z": s["metrics"].get("arousal_z", 0.0),
+        "n_messages": s["metrics"].get("n_messages", 0),
+    }
+
+
+class RespondOut(BaseModel):
+    alert: Optional[str] = None
+    arousal_z: float
+    threshold_z: float
+    suggestions: List[str] = []
+
+
+@router.post("/{group_id}/respond", response_model=RespondOut)
+async def respond(group_id: str) -> RespondOut:
+    gid = validate_group_id(group_id)
+    st = get_group_state(gid)
+    if st is None:
+        raise HTTPException(status_code=404, detail="group not found")
+    z = float(st["metrics"].get("arousal_z", 0.0))
+    th = float(get_threshold_z())
+    if z >= th:
+        return RespondOut(
+            alert="arousal_spike_detected",
+            arousal_z=z,
+            threshold_z=th,
+            suggestions=[
+                "Pausa de 90 s: respirad y retomad con idea principal en 1 frase.",
+                "Reencuadre: cada uno aporta un hecho verificable y una petición concreta.",
+            ],
         )
+    return RespondOut(alert=None, arousal_z=z, threshold_z=th, suggestions=[])
 
-    try:
-        filepath = group_service.create_group(group_id, template=template)
-        return schemas.GroupInfo(
-            group_id=group_id,
-            last_modified=datetime.fromtimestamp(filepath.stat().st_mtime)
-        )
-    except FileExistsError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
-    except ValueError as e: # Captura la validación de get_group_memory_path
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except IOError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.put("/{group_id}", status_code=status.HTTP_200_OK, response_model=schemas.GroupInfo)
-def rename_group(group_id: str, rename_data: schemas.RenameGroupRequest):
-    """
-    Renombra un grupo (proyecto).
-    """
-    new_group_id = rename_data.new_group_id
-    if not re.match(r"^[a-zA-Z0-9_-]+$", new_group_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nuevo ID del proyecto solo puede contener letras, números, guiones y guiones bajos."
-        )
-
-    try:
-        group_service.rename_group(group_id, new_group_id)
-        new_filepath = group_service.get_group_memory_path(new_group_id)
-        return schemas.GroupInfo(group_id=new_group_id, last_modified=datetime.fromtimestamp(new_filepath.stat().st_mtime))
-    except (FileNotFoundError, FileExistsError, ValueError, IOError) as e:
-        # Asignar códigos de estado HTTP apropiados
-        status_code = 404 if isinstance(e, FileNotFoundError) else 409 if isinstance(e, FileExistsError) else 400
-        raise HTTPException(status_code=status_code, detail=str(e))
-
-@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_group(group_id: str):
-    """
-    Elimina un grupo (proyecto) de forma permanente.
-    """
-    try:
-        group_service.delete_group(group_id)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IOError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    except ValueError as e: # Captura la validación de get_group_memory_path
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-
-@router.post("/{group_id}/ingest", status_code=status.HTTP_202_ACCEPTED)
-def ingest_message(group_id: str, message: schemas.MessageIngest):
-    """Ingiere y procesa un nuevo mensaje para un grupo."""
-    try:
-        group_service.persist_message(group_id, message)
-        return {"status": "accepted"}
-    except Exception as e:
-        # En un sistema real, aquí se registraría el error.
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.get("/{group_id}/state")
-def get_group_state(group_id: str):
-    """Devuelve el estado completo (memoria YAML) de un grupo."""
-    state = group_service.get_group_state(group_id)
-    if state is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo no encontrado.")
-    return state
-
-@router.get("/{group_id}/metrics", response_model=schemas.GroupMetricsResponse)
-def get_group_metrics(group_id: str):
-    """Devuelve las métricas clave del grupo en tiempo real."""
-    try:
-        validate_group_id(group_id)
-        return group_service.get_group_metrics(group_id)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
-        # Log the error in a real app
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al calcular las métricas del grupo.")
-
-@router.get("/{group_id}/affective_history", response_model=schemas.AffectiveHistoryResponse)
-def get_group_affective_history(
-    group_id: str,
-    since_hours: int = Query(24, ge=1, le=168, description="Ventana de tiempo en horas para el historial.")
-):
-    """Devuelve un historial de puntos de 'arousal' para el grupo."""
-    try:
-        validate_group_id(group_id)
-        return group_service.get_affective_history(group_id, since_hours)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+async def state(group_id: str) -> Dict[str, Any]:
+    gid = validate_group_id(group_id)
+    st = get_group_state(gid)
+    if st is None:
+        raise HTTPException(status_code=404, detail="group not found")
+    return st

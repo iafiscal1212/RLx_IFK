@@ -1,28 +1,30 @@
 import re
+from pathlib import Path
+from typing import Any, Dict
+import yaml
 
-# Una expresión regular estricta para nombres de archivo e IDs de grupo seguros.
-# Permite letras (incluyendo Unicode), números, guiones bajos, guiones y puntos.
-_filename_re = re.compile(r"[^a-zA-Z0-9._-]")
+ROOT = Path(__file__).resolve().parents[2]
+BUNDLE = ROOT / "local_bundle"
 
-def sanitize_filename(filename: str) -> str:
-    """
-    Sanitiza un nombre de archivo para prevenir ataques de path traversal.
-    Reemplaza caracteres no seguros por guiones bajos.
-    """
-    # Reemplaza cualquier caracter no permitido por un guion bajo.
-    sanitized = _filename_re.sub("_", filename)
-    # Colapsa múltiples puntos o guiones bajos para evitar ofuscación.
-    sanitized = re.sub(r"_{2,}", "_", sanitized)
-    sanitized = re.sub(r"\.{2,}", ".", sanitized)
-    # Elimina caracteres peligrosos al inicio o final del nombre.
-    return sanitized.strip("._")
 
-def validate_group_id(group_id: str):
-    """Valida un ID de grupo para asegurar que es un nombre de directorio seguro."""
-    # Debe coincidir con la validación de la API: letras, números, guion y guion bajo.
-    # No debe contener '..' o '/' para prevenir path traversal.
-    # No debe empezar o terminar con caracteres que puedan causar problemas.
-    if not re.match(r"^[a-zA-Z0-9_-]+$", group_id) or \
-       ".." in group_id or \
-       "/" in group_id:
-        raise ValueError(f"ID de grupo no válido: '{group_id}'")
+def validate_group_id(group_id: str) -> str:
+    if not re.fullmatch(r"[a-z0-9\-]+", group_id):
+        raise ValueError("invalid group id: use lowercase, digits, hyphen")
+    return group_id
+
+
+def ensure_dir(p: Path) -> None:
+    p.mkdir(parents=True, exist_ok=True)
+
+
+def yaml_load(p: Path) -> Any:
+    if not p.exists():
+        return None
+    with p.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f) if f.readable() else None
+
+
+def yaml_dump(p: Path, data: Any) -> None:
+    ensure_dir(p.parent)
+    with p.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
